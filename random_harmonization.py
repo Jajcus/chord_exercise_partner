@@ -296,12 +296,20 @@ class ChordTester(tk.Frame):
         self.buttons.pack(side=tk.BOTTOM)
 
         self.start_b = tk.Button(self.buttons)
+        self.start_b["text"] = "Start"
+        self.start_b["command"] = self.start
+        self.start_b["state"] = tk.NORMAL
         self.start_b.pack(side=tk.LEFT, padx=5, pady=5)
+
+        self.new_b = tk.Button(self.buttons)
+        self.new_b["text"] = "New Exercise"
+        self.new_b["command"] = self.new_exercise
+        self.new_b.pack(side=tk.LEFT, padx=5, pady=5)
 
         self.quit_b = tk.Button(self.buttons)
         self.quit_b["text"] = "Quit"
         self.quit_b["command"] = self.master.destroy
-        self.quit_b.pack(side=tk.RIGHT, padx=5, pady=5)
+        self.quit_b.pack(side=tk.LEFT, padx=5, pady=5)
 
     def draw_canvas(self):
 
@@ -368,8 +376,8 @@ class ChordTester(tk.Frame):
         self.top_canvas.create_line(x0, h - y0, x2, h - y2)
 
     def start(self):
-        self.start_b["text"] = "New Exercise"
-        self.start_b["command"] = self.new_exercise
+        self.start_b["state"] = tk.DISABLED
+
         song_length = ((LEAD_IN + EXERCISE_LENGTH) * 4.0) * 60 / TEMPO
         print("Song length: {}s".format(song_length))
 
@@ -436,8 +444,7 @@ class ChordTester(tk.Frame):
         self.chord_n_l["text"] = "Current chord name: –"
         self.scale_l["text"] = "The scale is: {}".format(self.exercise.scale_name)
         self.draw_canvas()
-        self.start_b["text"] = "Start"
-        self.start_b["command"] = self.start
+        self.start_b["state"] = tk.NORMAL
 
 root_w = tk.Tk()
 app = ChordTester(master=root_w)
