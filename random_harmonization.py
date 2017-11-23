@@ -292,7 +292,9 @@ class CompPlayer:
             self.thread = None
 
     def stop(self):
-        self.exercise = None
+        with self.lock:
+            self.exercise = None
+            self.cond.notify()
 
 class Exercise:
     def __init__(self):
@@ -496,7 +498,12 @@ class ChordTester(tk.Frame):
         self.top_canvas.create_line(x0, h - y0, x2, h - y2)
 
     def start(self):
-        self.start_b["state"] = tk.DISABLED
+        if self.player:
+            self.player.stop()
+
+        self.start_b["text"] = "Restart"
+
+        self.canvas.xview_moveto(0)
 
         song_length = ((LEAD_IN + EXERCISE_LENGTH) * 4.0) * 60 / TEMPO
         print("Song length: {}s".format(song_length))
@@ -565,7 +572,7 @@ class ChordTester(tk.Frame):
         self.chord_n_l["text"] = "Current chord name: –"
         self.scale_l["text"] = "The scale is: {}".format(self.exercise.scale_name)
         self.draw_canvas()
-        self.start_b["state"] = tk.NORMAL
+        self.start_b["text"] = "Start"
 
 root_w = tk.Tk()
 app = ChordTester(master=root_w)
