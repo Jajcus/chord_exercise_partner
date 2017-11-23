@@ -502,6 +502,8 @@ class ChordTester(tk.Frame):
             self.player.stop()
 
         self.start_b["text"] = "Restart"
+        self.chord_d_l["text"] = "Current chord degree: –"
+        self.chord_n_l["text"] = "Current chord name: –"
 
         self.canvas.xview_moveto(0)
 
