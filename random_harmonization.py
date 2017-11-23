@@ -1,7 +1,9 @@
 #!/usr/bin/python3
 
-import time
 import random
+import re
+import threading
+import time
 
 import tkinter as tk
 
@@ -51,6 +53,43 @@ BEAT_OFFSET = 50
 BEAT_LENGTH = BAR_LENGTH / 4
 BAR_OFFSET = BEAT_OFFSET - BEAT_LENGTH / 2
 
+D_BASS = 35
+D_STICK = 37
+D_SNARE = 38
+D_HH_CLOSED = 42
+
+CH_DRUMS = 10
+
+#   [(time_in_bar, [(channel, note, velocity, duration), ...]),...]
+LEAD_TRACK = [
+    # bar 1
+    [
+    (0.0  , [(CH_DRUMS, D_STICK, 0.5, 0.5)]),
+    (0.5  , [(CH_DRUMS, D_STICK, 0.5, 0.5)]),
+    ],
+    # bar 2
+    [
+    (0.0  , [(CH_DRUMS, D_STICK, 0.5, 0.25)]),
+    (0.25 , [(CH_DRUMS, D_STICK, 0.5, 0.25)]),
+    (0.5  , [(CH_DRUMS, D_STICK, 0.5, 0.25)]),
+    (0.75 , [(CH_DRUMS, D_STICK, 0.5, 0.25)]),
+    ],
+]
+
+MAIN_TRACK = [
+    # single bar
+    [
+    (0.0  , [(CH_DRUMS, D_BASS, 0.5, 0.5), (CH_DRUMS, D_HH_CLOSED, 0.5, 0.125)]),
+    (0.125, [(CH_DRUMS, D_HH_CLOSED, 0.5, 0.125)]),
+    (0.25 , [(CH_DRUMS, D_SNARE, 0.5, 0.25), (CH_DRUMS, D_HH_CLOSED, 0.5, 0.125)]),
+    (0.375, [(CH_DRUMS, D_HH_CLOSED, 0.5, 0.125)]),
+    (0.5  , [(CH_DRUMS, D_BASS, 0.5, 0.5), (CH_DRUMS, D_HH_CLOSED, 0.5, 0.125)]),
+    (0.625, [(CH_DRUMS, D_HH_CLOSED, 0.5, 0.125)]),
+    (0.75 , [(CH_DRUMS, D_SNARE, 0.5, 0.25), (CH_DRUMS, D_HH_CLOSED, 0.5, 0.125)]),
+    (0.875, [(CH_DRUMS, D_HH_CLOSED, 0.5, 0.125)]),
+    ]
+]
+
 def scale_name(root):
     flats = FLATS[root]
     return "{}-major".format(NOTES[flats][root])
@@ -60,6 +99,127 @@ def chord_name(root, degree):
     chord_root = (root + chord_note) % 12
     chord_name = NOTES[FLATS[root]][chord_root]
     return chord_name +  chord_quality
+
+class MIDINotAvailable(Exception):
+    pass
+
+class CompPlayer:
+    _PORT_WEIGHTS = [
+            (re.compile("^Midi Through"), 10),
+            (re.compile(".*:qjackctl"), 20),
+            ]
+    def __init__(self):
+        self.exercise = None
+        self.start_time = None
+        self.quit = False
+        self.port = None
+        self.thread = None
+
+        try:
+            import rtmidi
+        except ImportError as err:
+            raise MIDINotAvailable("rtmidi module not available: {}".format(err))
+
+        try:
+            midi = rtmidi.MidiOut()
+            ports = midi.get_ports()
+        except rtmidi.RtMidiError as error:
+            raise MIDINotAvailable("Could not find MIDI ports: {}".format(err))
+
+        if not ports:
+            raise MIDINotAvailable("No output MIDI ports found")
+
+        print("MIDI out ports found:", ", ".join(ports))
+        def _port_pref(item):
+            num, name = item
+            for re, weight in self._PORT_WEIGHTS:
+                if re.match(name):
+                    return weight
+            else:
+                return 0
+        port_num = sorted(enumerate(ports), key=_port_pref)[0][0]
+        print("Selected MIDI port:", ports[port_num])
+        self.port = midi.open_port(port_num)
+
+        self.lock = threading.Lock()
+        self.cond = threading.Condition(self.lock)
+        self.thread = threading.Thread(name="comp player",
+                                       daemon=True,
+                                       target=self.run)
+        self.thread.start()
+
+    def __del__(self):
+        self.quit = True
+        for i in range(1000):
+            if not self.thread:
+                break
+            time.sleep(0.01)
+        if self.port:
+            # all notes off
+            for ch in range(0, 16):
+                self.port.send_message([0xb0 + ch, 0x78, 0])
+            self.port = None
+
+    def prepare_track(self, pattern, bars=1, start=0):
+        pattern_bars = len(pattern)
+        events = []
+        for bar in range(bars):
+            for bar_time, notes in pattern[bar % pattern_bars]:
+                rel_time = (start + bar + bar_time) * 60.0 * 4.0 / TEMPO
+                on_time = self.start_time + rel_time
+                for channel, note, velocity, duration in notes:
+                    off_time = on_time + duration * 60.0 * 4.0 / TEMPO
+                    message = [0x90 + (channel - 1) % 16,
+                               note % 128,
+                               int(velocity * 127) % 128]
+                    events.append((on_time, message))
+                    message = [0x80 + (channel - 1) % 16,
+                               note % 128,
+                               int(velocity * 127) % 128]
+                    events.append((off_time, message))
+        return sorted(events)
+
+    def start(self, exercise):
+        """Start the player, return the start time."""
+        with self.lock:
+            self.exercise = exercise
+            self.start_time = None
+            self.cond.notify()
+            while not self.start_time:
+                self.cond.wait()
+        return self.start_time
+
+    def run(self):
+        try:
+            with self.lock:
+                while not self.quit:
+                    while not self.exercise:
+                        self.cond.wait(0.1)
+                    self.start_time = time.time()
+                    self.cond.notify()
+                    events = self.prepare_track(LEAD_TRACK, LEAD_IN)
+                    events += self.prepare_track(MAIN_TRACK, EXERCISE_LENGTH, LEAD_IN)
+                    while not self.quit and self.start_time and self.exercise and events:
+                        ev_time, message = events[0]
+                        now = time.time()
+                        if ev_time <= now:
+                            events = events[1:]
+                            if self.port:
+                                self.port.send_message(message)
+                            if not events:
+                                break
+                            ev_time = events[0][0]
+                            now = time.time() # send_message() could eat some
+                        if ev_time > now:
+                            self.cond.wait(ev_time - now)
+                    self.start_time = None
+                    self.exercise = None
+                    self.cond.notify()
+        finally:
+            self.thread = None
+
+    def stop(self):
+        self.exercise = None
 
 class Exercise:
     def __init__(self):
@@ -85,6 +245,12 @@ class ChordTester(tk.Frame):
         self.bar = None
         self.beat = None
         self.exercise = None
+
+        try:
+            self.player = CompPlayer()
+        except MIDINotAvailable as err:
+            print("MIDI player not available")
+            self.player = None
 
         self.pack(expand=1, fill=tk.BOTH)
         self.create_widgets()
@@ -206,7 +372,12 @@ class ChordTester(tk.Frame):
         self.start_b["command"] = self.new_exercise
         song_length = ((LEAD_IN + EXERCISE_LENGTH) * 4.0) * 60 / TEMPO
         print("Song length: {}s".format(song_length))
-        self.start_time = time.time()
+
+        if self.player:
+            self.start_time = self.player.start(self.exercise)
+        else:
+            self.start_time = time.time()
+
         self.end_time = self.start_time + song_length
         self.progress()
 
@@ -253,6 +424,8 @@ class ChordTester(tk.Frame):
             self.canvas.after(10, self.progress)
 
     def new_exercise(self):
+        if self.player:
+            self.player.stop()
         self.exercise = Exercise()
         self.start_time = None
         self.end_time = None
