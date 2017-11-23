@@ -76,7 +76,8 @@ LEAD_TRACK = [
     ],
 ]
 
-MAIN_TRACK = [
+MAIN_TRACKS = {
+        "straight" : [
     # single bar
     [
     (0.0  , [(CH_DRUMS, D_BASS, 0.5, 0.5), (CH_DRUMS, D_HH_CLOSED, 0.5, 0.125)]),
@@ -88,7 +89,20 @@ MAIN_TRACK = [
     (0.75 , [(CH_DRUMS, D_SNARE, 0.5, 0.25), (CH_DRUMS, D_HH_CLOSED, 0.5, 0.125)]),
     (0.875, [(CH_DRUMS, D_HH_CLOSED, 0.5, 0.125)]),
     ]
-]
+    ],
+        "swing" : [
+    [
+    (0.0  , [(CH_DRUMS, D_BASS, 0.5, 0.5), (CH_DRUMS, D_HH_CLOSED, 0.5, 0.125)]),
+    (0.167, [(CH_DRUMS, D_HH_CLOSED, 0.5, 0.125)]),
+    (0.25 , [(CH_DRUMS, D_SNARE, 0.5, 0.25), (CH_DRUMS, D_HH_CLOSED, 0.5, 0.125)]),
+    (0.417, [(CH_DRUMS, D_HH_CLOSED, 0.5, 0.125)]),
+    (0.5  , [(CH_DRUMS, D_BASS, 0.5, 0.5), (CH_DRUMS, D_HH_CLOSED, 0.5, 0.125)]),
+    (0.667, [(CH_DRUMS, D_HH_CLOSED, 0.5, 0.125)]),
+    (0.75 , [(CH_DRUMS, D_SNARE, 0.5, 0.25), (CH_DRUMS, D_HH_CLOSED, 0.5, 0.125)]),
+    (0.917, [(CH_DRUMS, D_HH_CLOSED, 0.5, 0.125)]),
+    ]
+    ]}
+DEFAULT_TRACK = "straight"
 
 def scale_name(root):
     flats = FLATS[root]
@@ -108,12 +122,16 @@ class CompPlayer:
             (re.compile("^Midi Through"), 10),
             (re.compile(".*:qjackctl"), 20),
             ]
+    _VIRT_PORT_NAME = "Chord Exercises"
     def __init__(self):
         self.exercise = None
         self.start_time = None
         self.quit = False
         self.port = None
+        self.port_name = None
+        self.available_ports = []
         self.thread = None
+        self.track_name = None
 
         try:
             import rtmidi
@@ -121,25 +139,27 @@ class CompPlayer:
             raise MIDINotAvailable("rtmidi module not available: {}".format(err))
 
         try:
-            midi = rtmidi.MidiOut()
-            ports = midi.get_ports()
-        except rtmidi.RtMidiError as error:
+            midi, ports = self._get_available_ports()
+        except rtmidi.RtMidiError as err:
             raise MIDINotAvailable("Could not find MIDI ports: {}".format(err))
 
-        if not ports:
-            raise MIDINotAvailable("No output MIDI ports found")
+        if ports:
+            port_num = ports[0][0]
+            print("Selected MIDI port:", ports[port_num])
+            try:
+                self.port = midi.open_port(port_num)
+                self.port_name = ports[0][1]
+            except rtmidi.RtMidiError as err:
+                print("Could not open MIDI port: {}".format(err))
 
-        print("MIDI out ports found:", ", ".join(ports))
-        def _port_pref(item):
-            num, name = item
-            for re, weight in self._PORT_WEIGHTS:
-                if re.match(name):
-                    return weight
-            else:
-                return 0
-        port_num = sorted(enumerate(ports), key=_port_pref)[0][0]
-        print("Selected MIDI port:", ports[port_num])
-        self.port = midi.open_port(port_num)
+        if not self.port:
+            print("Opening virtual midi port")
+            try:
+                self.port = midi.open_virtual_port(self._VIRT_PORT_NAME)
+            except rtmidi.RtMidiError as err:
+                raise MIDINotAvailable("Could not open virtual MIDI port: {}"
+                                        .format(err))
+            self.port_name = "<virtual>"
 
         self.lock = threading.Lock()
         self.cond = threading.Condition(self.lock)
@@ -160,6 +180,58 @@ class CompPlayer:
                 self.port.send_message([0xb0 + ch, 0x78, 0])
             self.port = None
 
+    def _get_available_ports(self):
+        import rtmidi
+        midi = rtmidi.MidiOut()
+        ports = midi.get_ports()
+        if not ports:
+            self.available_ports = ["<virtual>"]
+
+        print("MIDI out ports found:", ", ".join(ports))
+        def _port_pref(item):
+            num, name = item
+            for re, weight in self._PORT_WEIGHTS:
+                if re.match(name):
+                    return weight
+            else:
+                return 0
+        sorted_ports = sorted(enumerate(ports), key=_port_pref)
+        self.available_ports = [p[1] for p in sorted_ports] + ["<virtual>"]
+        return midi, sorted_ports
+
+    def change_port(self, port_name):
+        print("Change port request:", port_name)
+        import rtmidi
+        try:
+            midi, ports = self._get_available_ports() # always refresh the list
+        except rtmidi.RtMidiError as err:
+            print("Could not list MIDI ports")
+            return False
+        if port_name == self.port_name:
+            return False
+        if port_name == "<virtual>":
+            try:
+                port = midi.open_virtual_port(self._VIRT_PORT_NAME)
+            except rtmidi.RtMidiError as err:
+                print("Could not open virtual port:", err)
+                return False
+        else:
+            for num, name in ports:
+                if name == port_name:
+                    break
+            else:
+                print("Unknown MIDI port:", port_name)
+                return False
+            try:
+                port = midi.open_port(num)
+            except rtmidi.RtMidiError as err:
+                print("Could not open MIDI port:", err)
+                return False
+
+        self.port.close_port()
+        self.port = port
+        self.port_name = port_name
+
     def prepare_track(self, pattern, bars=1, start=0):
         pattern_bars = len(pattern)
         events = []
@@ -179,11 +251,12 @@ class CompPlayer:
                     events.append((off_time, message))
         return sorted(events)
 
-    def start(self, exercise):
+    def start(self, exercise, main_track):
         """Start the player, return the start time."""
         with self.lock:
             self.exercise = exercise
             self.start_time = None
+            self.track_name = main_track
             self.cond.notify()
             while not self.start_time:
                 self.cond.wait()
@@ -198,7 +271,7 @@ class CompPlayer:
                     self.start_time = time.time()
                     self.cond.notify()
                     events = self.prepare_track(LEAD_TRACK, LEAD_IN)
-                    events += self.prepare_track(MAIN_TRACK, EXERCISE_LENGTH, LEAD_IN)
+                    events += self.prepare_track(self.track_name, EXERCISE_LENGTH, LEAD_IN)
                     while not self.quit and self.start_time and self.exercise and events:
                         ev_time, message = events[0]
                         now = time.time()
@@ -246,6 +319,9 @@ class ChordTester(tk.Frame):
         self.beat = None
         self.exercise = None
 
+        self.track_v = None
+        self.midi_port_v = None
+
         try:
             self.player = CompPlayer()
         except MIDINotAvailable as err:
@@ -268,48 +344,92 @@ class ChordTester(tk.Frame):
         self.chord_n_l = tk.Label(self, font=BAR_LABEL_FONT)
         self.chord_n_l.pack()
 
-        self.canvases = tk.Frame(self, padx=0, pady=0)
-        self.top_canvas = tk.Canvas(self.canvases,
+        self.canvases_f = tk.Frame(self, padx=0, pady=0)
+        self.top_canvas = tk.Canvas(self.canvases_f,
                                 height=CANVAS_HEIGHT / 2,
                                 width=CANVAS_WIDTH,
                                 bd=0, highlightthickness=0, relief='ridge',
                                 bg="white")
         self.top_canvas.pack(fill=tk.X, expand=1, pady=0, ipady=0)
 
-        self.canvas = tk.Canvas(self.canvases,
+        self.canvas = tk.Canvas(self.canvases_f,
                                 height=CANVAS_HEIGHT,
                                 width=CANVAS_WIDTH,
                                 bd=0, highlightthickness=0, relief='ridge',
                                 bg="white")
         self.canvas.pack(fill=tk.X, expand=1)
 
-        self.bottom_canvas = tk.Canvas(self.canvases,
+        self.bottom_canvas = tk.Canvas(self.canvases_f,
                                 height=CANVAS_HEIGHT / 2,
                                 width=CANVAS_WIDTH,
                                 bd=0, highlightthickness=0, relief='ridge',
                                 bg="white")
         self.bottom_canvas.pack(fill=tk.X, expand=1, pady=0, ipady=0)
 
-        self.canvases.pack(fill=tk.X, expand=1, pady=0, ipady=0)
+        self.canvases_f.pack(fill=tk.X, expand=1, pady=0, ipady=0)
 
-        self.buttons = tk.Frame(self)
-        self.buttons.pack(side=tk.BOTTOM)
+        self.settings_f = tk.Frame(self)
+        self.settings_f.pack()
 
-        self.start_b = tk.Button(self.buttons)
+        self.buttons_f = tk.Frame(self)
+        self.buttons_f.pack(side=tk.BOTTOM)
+
+        self.start_b = tk.Button(self.buttons_f)
         self.start_b["text"] = "Start"
         self.start_b["command"] = self.start
         self.start_b["state"] = tk.NORMAL
         self.start_b.pack(side=tk.LEFT, padx=5, pady=5)
 
-        self.new_b = tk.Button(self.buttons)
+        self.new_b = tk.Button(self.buttons_f)
         self.new_b["text"] = "New Exercise"
         self.new_b["command"] = self.new_exercise
         self.new_b.pack(side=tk.LEFT, padx=5, pady=5)
 
-        self.quit_b = tk.Button(self.buttons)
+        self.quit_b = tk.Button(self.buttons_f)
         self.quit_b["text"] = "Quit"
         self.quit_b["command"] = self.master.destroy
         self.quit_b.pack(side=tk.LEFT, padx=5, pady=5)
+
+        self.update_settings_widgets()
+
+    def update_settings_widgets(self):
+        for widget in self.settings_f.winfo_children():
+            widget.destroy()
+
+        if self.player:
+            label = tk.Label(self.settings_f, text="Backing track:")
+            label.pack(side=tk.LEFT)
+
+            if not self.track_v:
+                self.track_v = tk.StringVar(self.settings_f)
+                self.track_v.set(DEFAULT_TRACK)
+
+            track_names = list(MAIN_TRACKS)
+            self.track_o = tk.OptionMenu(self.settings_f,
+                                         self.track_v,
+                                         *track_names)
+            self.track_o.pack(side=tk.LEFT)
+
+            label = tk.Label(self.settings_f, text="MIDI port:")
+            label.pack(side=tk.LEFT)
+
+            if not self.midi_port_v:
+                self.midi_port_v = tk.StringVar(self.settings_f)
+                self.midi_port_v.set(self.player.port_name)
+                self.midi_port_v.trace("w", self.midi_port_changed)
+            else:
+                self.midi_port_v.set(self.player.port_name)
+
+            self.midi_port_o = tk.OptionMenu(self.settings_f,
+                                             self.midi_port_v,
+                                             *self.player.available_ports)
+            self.midi_port_o.pack(side=tk.LEFT)
+
+
+    def midi_port_changed(self, *args):
+        if self.player:
+            self.player.change_port(self.midi_port_v.get())
+        self.update_settings_widgets()
 
     def draw_canvas(self):
 
@@ -382,7 +502,8 @@ class ChordTester(tk.Frame):
         print("Song length: {}s".format(song_length))
 
         if self.player:
-            self.start_time = self.player.start(self.exercise)
+            track = MAIN_TRACKS[self.track_v.get()]
+            self.start_time = self.player.start(self.exercise, track)
         else:
             self.start_time = time.time()
 
