@@ -6,6 +6,7 @@ import time
 import tkinter as tk
 
 from .exercise import DEFAULT_TEMPO, LEAD_IN, Exercise
+from .notes import SCALES, normalize_scale_root
 from .player import CompPlayer, MIDINotAvailable
 from .tracks import DEFAULT_TRACK, MAIN_TRACKS
 
@@ -48,6 +49,10 @@ class CEPApplication(tk.Frame):
 
         self.tempo_v = None
         self.tempo_o = None
+        self.scale_root_v = None
+        self.scale_root_o = None
+        self.scale_mode_v = None
+        self.scale_mode_o = None
 
         self.track_v = None
         self.track_o = None
@@ -156,6 +161,36 @@ class CEPApplication(tk.Frame):
                                      *range(40, 210, 10))
         self.tempo_o.pack(side=tk.LEFT)
 
+        label = tk.Label(self.e_settings_f, text="Scale:")
+        label.pack(side=tk.LEFT)
+
+        if not self.scale_mode_v:
+            self.scale_mode_v = tk.StringVar(self.e_settings_f)
+            if self.exercise:
+                self.scale_mode_v.set(self.exercise.mode)
+            else:
+                self.scale_mode_v.set("major")
+            self.scale_mode_v.trace("w", self.mode_changed)
+
+        if not self.scale_root_v:
+            self.scale_root_v = tk.StringVar(self.e_settings_f)
+            if self.exercise:
+                self.scale_root_v.set(self.exercise.root)
+            else:
+                self.scale_root_v.set("<random>")
+
+        options = ["<random>"] + list(SCALES[self.scale_mode_v.get()])
+        self.scale_root_o = tk.OptionMenu(self.e_settings_f,
+                                          self.scale_root_v,
+                                          *options)
+        self.scale_root_o.pack(side=tk.LEFT)
+
+        options = list(SCALES)
+        self.scale_mode_o = tk.OptionMenu(self.e_settings_f,
+                                          self.scale_mode_v,
+                                          *options)
+        self.scale_mode_o.pack(side=tk.LEFT)
+
     def update_player_settings_widgets(self):
         """(Re)create player settings widgets.
 
@@ -200,6 +235,15 @@ class CEPApplication(tk.Frame):
         if self.player:
             self.player.change_port(self.midi_port_v.get())
         self.update_player_settings_widgets()
+
+    def mode_changed(self, *args_):
+        """Scale mode selection widget change callback."""
+        root = self.scale_root_v.get()
+        if root != "<random>":
+            mode = self.scale_mode_v.get()
+            root = normalize_scale_root(root, mode)
+            self.scale_root_v.set(root)
+        self.update_exercise_settings_widgets()
 
     def draw_canvas(self):
         """Draw current exercise on the main canvas."""
@@ -342,7 +386,19 @@ class CEPApplication(tk.Frame):
             tempo = self.tempo_v.get()
         else:
             tempo = DEFAULT_TEMPO
-        self.exercise = Exercise(tempo=tempo)
+        if self.scale_mode_v:
+            mode = self.scale_mode_v.get()
+        else:
+            mode = None
+        if self.scale_root_v:
+            root = self.scale_root_v.get()
+            if root == "<random>":
+                root = None
+        else:
+            root = None
+        self.exercise = Exercise(tempo=tempo,
+                                 root=root,
+                                 mode=mode)
         self.tempo_v.set(self.exercise.tempo)
         self.start_time = None
         self.end_time = None
