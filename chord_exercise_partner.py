@@ -122,7 +122,7 @@ class CompPlayer:
             (re.compile("^Midi Through"), 10),
             (re.compile(".*:qjackctl"), 20),
             ]
-    _VIRT_PORT_NAME = "Chord Exercises"
+    _VIRT_PORT_NAME = "Chord Exercise Partner"
     def __init__(self):
         self.exercise = None
         self.start_time = None
@@ -312,7 +312,7 @@ class Exercise:
         self.chord_names = [chord_name(self.root, x) for x in self.progression]
         #print("Which is: {}".format(",".join(self.chord_names)))
 
-class ChordTester(tk.Frame):
+class CEP_App(tk.Frame):
     def __init__(self, master=None):
         super().__init__(master)
         self.start_time = None
@@ -577,6 +577,7 @@ class ChordTester(tk.Frame):
         self.start_b["text"] = "Start"
 
 root_w = tk.Tk()
-app = ChordTester(master=root_w)
+root_w.title("Chord Exercise Partner")
+app = CEP_App(master=root_w)
 app.mainloop()
 
