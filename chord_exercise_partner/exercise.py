@@ -14,6 +14,7 @@ ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII"]
 
 class Exercise:
     """An exercise – a scale and chord progression to play."""
+    # pylint: disable=too-few-public-methods
     def __init__(self):
         random.seed()
         self.root = random.randint(0, 11)
@@ -24,8 +25,7 @@ class Exercise:
         self.progression = [random.randint(0, 6)
                             for i in range(EXERCISE_LENGTH)]
 
-        print("The progression is: {}".format(",".join(ROMAN[x]
-                                                for x in self.progression)))
+        roman_numbers = [ROMAN[x] for x in self.progression]
+        print("The progression is: {}".format(",".join(roman_numbers)))
         self.chord_names = [chord_name(self.root, x) for x in self.progression]
         #print("Which is: {}".format(",".join(self.chord_names)))
-

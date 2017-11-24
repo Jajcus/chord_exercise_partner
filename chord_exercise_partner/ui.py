@@ -6,7 +6,6 @@ import time
 import tkinter as tk
 
 from .exercise import Exercise, LEAD_IN, EXERCISE_LENGTH, TEMPO
-from .notes import NOTES, FLATS
 from .player import CompPlayer, MIDINotAvailable
 from .tracks import MAIN_TRACKS, DEFAULT_TRACK
 
@@ -36,8 +35,9 @@ BAR_OFFSET = BEAT_OFFSET - BEAT_LENGTH / 2
 
 CHORD_NAME_DELAY = 2 # beats
 
-class CEP_App(tk.Frame):
+class CEPApplication(tk.Frame):
     """Application window."""
+    # pylint: disable=too-many-ancestors
     def __init__(self, master=None):
         super().__init__(master)
         self.start_time = None
@@ -47,12 +47,14 @@ class CEP_App(tk.Frame):
         self.exercise = None
 
         self.track_v = None
+        self.track_o = None
         self.midi_port_v = None
+        self.midi_port_o = None
 
         try:
             self.player = CompPlayer()
         except MIDINotAvailable as err:
-            print("MIDI player not available")
+            print("MIDI player not available:", err)
             self.player = None
 
         self.pack(expand=1, fill=tk.BOTH)
@@ -74,24 +76,30 @@ class CEP_App(tk.Frame):
 
         self.canvases_f = tk.Frame(self, padx=0, pady=0)
         self.top_canvas = tk.Canvas(self.canvases_f,
-                                height=CANVAS_HEIGHT / 2,
-                                width=CANVAS_WIDTH,
-                                bd=0, highlightthickness=0, relief='ridge',
-                                bg="white")
+                                    height=CANVAS_HEIGHT / 2,
+                                    width=CANVAS_WIDTH,
+                                    bd=0,
+                                    highlightthickness=0,
+                                    relief='ridge',
+                                    bg="white")
         self.top_canvas.pack(fill=tk.X, expand=1, pady=0, ipady=0)
 
         self.canvas = tk.Canvas(self.canvases_f,
                                 height=CANVAS_HEIGHT,
                                 width=CANVAS_WIDTH,
-                                bd=0, highlightthickness=0, relief='ridge',
+                                bd=0,
+                                highlightthickness=0,
+                                relief='ridge',
                                 bg="white")
         self.canvas.pack(fill=tk.X, expand=1)
 
         self.bottom_canvas = tk.Canvas(self.canvases_f,
-                                height=CANVAS_HEIGHT / 2,
-                                width=CANVAS_WIDTH,
-                                bd=0, highlightthickness=0, relief='ridge',
-                                bg="white")
+                                       height=CANVAS_HEIGHT / 2,
+                                       width=CANVAS_WIDTH,
+                                       bd=0,
+                                       highlightthickness=0,
+                                       relief='ridge',
+                                       bg="white")
         self.bottom_canvas.pack(fill=tk.X, expand=1, pady=0, ipady=0)
 
         self.canvases_f.pack(fill=tk.X, expand=1, pady=0, ipady=0)
@@ -122,7 +130,7 @@ class CEP_App(tk.Frame):
 
     def update_settings_widgets(self):
         """(Re)create settings widgets.
-        
+
         Some of the OptionMenu widgets needs rebuilding due to option
         set depending on other settings and available resources.
         """
@@ -153,13 +161,13 @@ class CEP_App(tk.Frame):
             else:
                 self.midi_port_v.set(self.player.port_name)
 
+            # pylint: disable=no-value-for-parameter
             self.midi_port_o = tk.OptionMenu(self.settings_f,
                                              self.midi_port_v,
                                              *self.player.available_ports)
             self.midi_port_o.pack(side=tk.LEFT)
 
-
-    def midi_port_changed(self, *args):
+    def midi_port_changed(self, *args_):
         """MIDI port selection widget change callback."""
         if self.player:
             self.player.change_port(self.midi_port_v.get())
@@ -206,9 +214,9 @@ class CEP_App(tk.Frame):
                                     font=CANVAS_FONT)
 
         x, y, width, height = self.canvas.bbox(tk.ALL)
-        self.canvas_length = width + 4096 # to be longer than any screen width
+        canvas_length = width + 4096 # to be longer than any screen width
 
-        self.canvas.config(scrollregion=(0, y, self.canvas_length, height),
+        self.canvas.config(scrollregion=(0, y, canvas_length, height),
                            xscrollincrement='1')
 
     def draw_markers(self):
@@ -222,7 +230,7 @@ class CEP_App(tk.Frame):
         y1 = y0 + ARROW_LENGTH
         y2 = y0 + ARROW_HEAD_LENGTH
 
-        h = CANVAS_HEIGHT / 2
+        h = CANVAS_HEIGHT / 2 # pylint: disable=invalid-name
 
         self.bottom_canvas.create_line(x0, y0, x0, y1)
         self.bottom_canvas.create_line(x0, y0, x1, y2)
@@ -257,7 +265,7 @@ class CEP_App(tk.Frame):
 
     def progress(self):
         """Update window as the exercise progresses.
-        
+
         Scroll the canvas and show current chords.
         """
 
@@ -276,9 +284,6 @@ class CEP_App(tk.Frame):
         beat_pos = pos * TEMPO / 60
         bar = int(beat_pos // 4)
         beat = beat_pos % 4
-        hours = int(pos / 3600)
-        minutes = int((pos % 3600) / 60)
-        seconds = int(pos % 60)
 
         if bar != self.bar and bar < total_bars:
             self.bar = bar
@@ -319,7 +324,8 @@ class CEP_App(tk.Frame):
         self.start_b["text"] = "Start"
 
 def main():
+    """Main entry point."""
     root_w = tk.Tk()
     root_w.title("Chord Exercise Partner")
-    app = CEP_App(master=root_w)
+    app = CEPApplication(master=root_w)
     app.mainloop()

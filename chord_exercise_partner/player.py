@@ -1,5 +1,7 @@
 #!/usr/bin/python3
 
+"""Backing track player."""
+
 import re
 import threading
 import time
@@ -11,13 +13,13 @@ try:
     import rtmidi
 except ImportError as err:
     rtmidi = None
-    rtmidi_import_error = err
+    rtmidi_import_error = err # pylint: disable=invalid-name
 
 # weights for sorting MIDI ports, to choose the optimal one
 PORT_WEIGHTS = [
-        (re.compile("^Midi Through"), 10),
-        (re.compile(".*:qjackctl"), 20),
-        ]
+    (re.compile("^Midi Through"), 10),
+    (re.compile(".*:qjackctl"), 20),
+    ]
 
 VIRT_PORT_NAME = "Chord Exercise Partner"
 
@@ -27,7 +29,7 @@ class MIDINotAvailable(Exception):
 
 class CompPlayer:
     """Backing track player.
-    
+
     A MIDI sequencer, running in a separate thread for precise timing.
     """
     def __init__(self):
@@ -64,7 +66,7 @@ class CompPlayer:
                 self.port = midi.open_virtual_port(VIRT_PORT_NAME)
             except rtmidi.RtMidiError as err:
                 raise MIDINotAvailable("Could not open virtual MIDI port: {}"
-                                        .format(err))
+                                       .format(err))
             self.port_name = "<virtual>"
 
         self.lock = threading.Lock()
@@ -77,14 +79,14 @@ class CompPlayer:
     def __del__(self):
         """Clean up, stopping all sounds."""
         self.quit = True
-        for i in range(1000):
+        for _ in range(1000):
             if not self.thread:
                 break
             time.sleep(0.01)
         if self.port:
             # all notes off
-            for ch in range(0, 16):
-                self.port.send_message([0xb0 + ch, 0x78, 0])
+            for channel in range(0, 16):
+                self.port.send_message([0xb0 + channel, 0x78, 0])
             self.port = None
 
     def _get_available_ports(self):
@@ -98,12 +100,11 @@ class CompPlayer:
 
         print("MIDI out ports found:", ", ".join(ports))
         def _port_pref(item):
-            num, name = item
-            for re, weight in PORT_WEIGHTS:
-                if re.match(name):
+            name = item[1]
+            for regexp, weight in PORT_WEIGHTS:
+                if regexp.match(name):
                     return weight
-            else:
-                return 0
+            return 0
         sorted_ports = sorted(enumerate(ports), key=_port_pref)
         self.available_ports = [p[1] for p in sorted_ports] + ["<virtual>"]
         return midi, sorted_ports
@@ -135,7 +136,7 @@ class CompPlayer:
                 print("Unknown MIDI port:", port_name)
                 return False
             try:
-                port = midi.open_port(num)
+                port = midi.open_port(num) # pylint: disable=undefined-loop-variable
             except rtmidi.RtMidiError as err:
                 print("Could not open MIDI port:", err)
                 return False

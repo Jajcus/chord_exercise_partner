@@ -1,0 +1,12 @@
+
+[BASIC]
+# default list includes 'bar', which is actually a reasonable name here
+bad-names=foo
+
+good-names=i,j,k,x,y,x0,y0,x1,y1,x2,y2
+
+[VARIABLES]
+dummy-variables-rgx=(.*_$)|dummy
+
+[TYPECHECK]
+generated-members=rtmidi.RtMidiError

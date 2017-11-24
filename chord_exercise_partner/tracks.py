@@ -1,5 +1,9 @@
 #!/usr/bin/python3
 
+"""Backing track patterns."""
+
+# pylint: disable=bad-continuation,bad-whitespace
+
 # General MIDI drum note numbers
 D_BASS = 35
 D_STICK = 37
