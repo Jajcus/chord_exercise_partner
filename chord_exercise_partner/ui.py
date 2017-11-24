@@ -5,7 +5,7 @@
 import time
 import tkinter as tk
 
-from .exercise import EXERCISE_LENGTH, LEAD_IN, TEMPO, Exercise
+from .exercise import DEFAULT_TEMPO, LEAD_IN, Exercise
 from .player import CompPlayer, MIDINotAvailable
 from .tracks import DEFAULT_TRACK, MAIN_TRACKS
 
@@ -45,6 +45,9 @@ class CEPApplication(tk.Frame):
         self.bar = None
         self.beat = None
         self.exercise = None
+
+        self.tempo_v = None
+        self.tempo_o = None
 
         self.track_v = None
         self.track_o = None
@@ -104,8 +107,11 @@ class CEPApplication(tk.Frame):
 
         self.canvases_f.pack(fill=tk.X, expand=1, pady=0, ipady=0)
 
-        self.settings_f = tk.Frame(self)
-        self.settings_f.pack()
+        self.e_settings_f = tk.Frame(self)
+        self.e_settings_f.pack()
+
+        self.p_settings_f = tk.Frame(self)
+        self.p_settings_f.pack()
 
         self.buttons_f = tk.Frame(self)
         self.buttons_f.pack(side=tk.BOTTOM)
@@ -126,43 +132,65 @@ class CEPApplication(tk.Frame):
         self.quit_b["command"] = self.master.destroy
         self.quit_b.pack(side=tk.LEFT, padx=5, pady=5)
 
-        self.update_settings_widgets()
+        self.update_exercise_settings_widgets()
+        self.update_player_settings_widgets()
 
-    def update_settings_widgets(self):
-        """(Re)create settings widgets.
+    def update_exercise_settings_widgets(self):
+        """(Re)create exercise settings widgets.
+        """
+        for widget in self.e_settings_f.winfo_children():
+            widget.destroy()
+
+        label = tk.Label(self.e_settings_f, text="Tempo:")
+        label.pack(side=tk.LEFT)
+
+        if not self.tempo_v:
+            self.tempo_v = tk.IntVar(self.e_settings_f)
+            if self.exercise:
+                self.tempo_v.set(self.exercise.tempo)
+            else:
+                self.tempo_v.set(DEFAULT_TEMPO)
+
+        self.tempo_o = tk.OptionMenu(self.e_settings_f,
+                                     self.tempo_v,
+                                     *range(40, 210, 10))
+        self.tempo_o.pack(side=tk.LEFT)
+
+    def update_player_settings_widgets(self):
+        """(Re)create player settings widgets.
 
         Some of the OptionMenu widgets needs rebuilding due to option
         set depending on other settings and available resources.
         """
-        for widget in self.settings_f.winfo_children():
+        for widget in self.p_settings_f.winfo_children():
             widget.destroy()
 
         if self.player:
-            label = tk.Label(self.settings_f, text="Backing track:")
+            label = tk.Label(self.p_settings_f, text="Backing track:")
             label.pack(side=tk.LEFT)
 
             if not self.track_v:
-                self.track_v = tk.StringVar(self.settings_f)
+                self.track_v = tk.StringVar(self.p_settings_f)
                 self.track_v.set(DEFAULT_TRACK)
 
             track_names = list(MAIN_TRACKS)
-            self.track_o = tk.OptionMenu(self.settings_f,
+            self.track_o = tk.OptionMenu(self.p_settings_f,
                                          self.track_v,
                                          *track_names)
             self.track_o.pack(side=tk.LEFT)
 
-            label = tk.Label(self.settings_f, text="MIDI port:")
+            label = tk.Label(self.p_settings_f, text="MIDI port:")
             label.pack(side=tk.LEFT)
 
             if not self.midi_port_v:
-                self.midi_port_v = tk.StringVar(self.settings_f)
+                self.midi_port_v = tk.StringVar(self.p_settings_f)
                 self.midi_port_v.set(self.player.port_name)
                 self.midi_port_v.trace("w", self.midi_port_changed)
             else:
                 self.midi_port_v.set(self.player.port_name)
 
             # pylint: disable=no-value-for-parameter
-            self.midi_port_o = tk.OptionMenu(self.settings_f,
+            self.midi_port_o = tk.OptionMenu(self.p_settings_f,
                                              self.midi_port_v,
                                              *self.player.available_ports)
             self.midi_port_o.pack(side=tk.LEFT)
@@ -171,7 +199,7 @@ class CEPApplication(tk.Frame):
         """MIDI port selection widget change callback."""
         if self.player:
             self.player.change_port(self.midi_port_v.get())
-        self.update_settings_widgets()
+        self.update_player_settings_widgets()
 
     def draw_canvas(self):
         """Draw current exercise on the main canvas."""
@@ -182,7 +210,7 @@ class CEPApplication(tk.Frame):
 
         # bars
         y = y_padding
-        for i in range(LEAD_IN + EXERCISE_LENGTH + 1):
+        for i in range(LEAD_IN + self.exercise.length + 1):
             x = BAR_OFFSET + i * BAR_LENGTH
             self.canvas.create_line(x, y, x, y + BAR_HEIGHT, fill="black")
 
@@ -198,7 +226,7 @@ class CEPApplication(tk.Frame):
                                         fill="black")
 
         # exercise beats and chord numbers
-        for i in range(EXERCISE_LENGTH):
+        for i in range(self.exercise.length):
             for j in range(4):
                 x = BEAT_OFFSET + (LEAD_IN + i) * BAR_LENGTH + j * BEAT_LENGTH
                 self.canvas.create_oval(x - BEAT_RADIUS,
@@ -251,7 +279,7 @@ class CEPApplication(tk.Frame):
 
         self.canvas.xview_moveto(0)
 
-        song_length = ((LEAD_IN + EXERCISE_LENGTH) * 4.0) * 60 / TEMPO
+        song_length = (LEAD_IN + self.exercise.length) * self.exercise.bar_duration
         print("Song length: {}s".format(song_length))
 
         if self.player:
@@ -274,16 +302,15 @@ class CEPApplication(tk.Frame):
             return
 
         now = time.time()
-        total_bars = LEAD_IN + EXERCISE_LENGTH
+        total_bars = LEAD_IN + self.exercise.length
         pos = now - self.start_time
 
         if pos < 0:
             print("Time runs backwards?!")
             return
 
-        beat_pos = pos * TEMPO / 60
-        bar = int(beat_pos // 4)
-        beat = beat_pos % 4
+        bar = int(pos // self.exercise.bar_duration)
+        beat = (pos % self.exercise.bar_duration) / self.exercise.beat_duration
 
         if bar != self.bar and bar < total_bars:
             self.bar = bar
@@ -311,7 +338,12 @@ class CEPApplication(tk.Frame):
         """Generate new exercise."""
         if self.player:
             self.player.stop()
-        self.exercise = Exercise()
+        if self.tempo_v:
+            tempo = self.tempo_v.get()
+        else:
+            tempo = DEFAULT_TEMPO
+        self.exercise = Exercise(tempo=tempo)
+        self.tempo_v.set(self.exercise.tempo)
         self.start_time = None
         self.end_time = None
         self.bar = None

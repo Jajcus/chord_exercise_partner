@@ -6,7 +6,7 @@ import re
 import threading
 import time
 
-from .exercise import EXERCISE_LENGTH, LEAD_IN, TEMPO
+from .exercise import LEAD_IN
 from .tracks import LEAD_TRACK
 
 try:
@@ -152,12 +152,14 @@ class CompPlayer:
         """
         pattern_bars = len(pattern)
         events = []
+        bar_d = self.exercise.bar_duration
+        whn_d = self.exercise.whole_note_duration
         for bar in range(bars):
             for bar_time, notes in pattern[bar % pattern_bars]:
-                rel_time = (start + bar + bar_time) * 60.0 * 4.0 / TEMPO
+                rel_time = (start + bar + bar_time) * bar_d
                 on_time = self.start_time + rel_time
                 for channel, note, velocity, duration in notes:
-                    off_time = on_time + duration * 60.0 * 4.0 / TEMPO
+                    off_time = on_time + duration * whn_d
                     message = [0x90 + (channel - 1) % 16,
                                note % 128,
                                int(velocity * 127) % 128]
@@ -188,8 +190,11 @@ class CompPlayer:
                         self.cond.wait(0.1)
                     self.start_time = time.time()
                     self.cond.notify()
-                    events = self.prepare_track(LEAD_TRACK, LEAD_IN)
-                    events += self.prepare_track(self.track_name, EXERCISE_LENGTH, LEAD_IN)
+                    events = self.prepare_track(LEAD_TRACK,
+                                                LEAD_IN)
+                    events += self.prepare_track(self.track_name,
+                                                 self.exercise.length,
+                                                 LEAD_IN)
                     while not self.quit and self.start_time and self.exercise and events:
                         ev_time, message = events[0]
                         now = time.time()
