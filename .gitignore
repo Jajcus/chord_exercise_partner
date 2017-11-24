@@ -1,4 +1,7 @@
 *~
+/build
+/dist
+*.egg-info
 *.pyc
-.*.swp
 pylint.log
+.*.swp
