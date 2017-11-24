@@ -4,7 +4,7 @@
 
 import random
 
-from .notes import scale_name, chord_name
+from .notes import chord_name, scale_name
 
 LEAD_IN = 2 # bars
 EXERCISE_LENGTH = 10 # bars

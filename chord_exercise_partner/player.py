@@ -6,8 +6,8 @@ import re
 import threading
 import time
 
+from .exercise import EXERCISE_LENGTH, LEAD_IN, TEMPO
 from .tracks import LEAD_TRACK
-from .exercise import LEAD_IN, EXERCISE_LENGTH, TEMPO
 
 try:
     import rtmidi

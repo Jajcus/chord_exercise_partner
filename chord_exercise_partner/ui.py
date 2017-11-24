@@ -5,9 +5,9 @@
 import time
 import tkinter as tk
 
-from .exercise import Exercise, LEAD_IN, EXERCISE_LENGTH, TEMPO
+from .exercise import EXERCISE_LENGTH, LEAD_IN, TEMPO, Exercise
 from .player import CompPlayer, MIDINotAvailable
-from .tracks import MAIN_TRACKS, DEFAULT_TRACK
+from .tracks import DEFAULT_TRACK, MAIN_TRACKS
 
 ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII"]
 
