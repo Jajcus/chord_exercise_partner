@@ -207,6 +207,7 @@ class CEPApplication(tk.Frame):
             if not self.track_v:
                 self.track_v = tk.StringVar(self.p_settings_f)
                 self.track_v.set(DEFAULT_TRACK)
+                self.track_v.trace("w", self.track_changed)
 
             track_names = list(MAIN_TRACKS)
             self.track_o = tk.OptionMenu(self.p_settings_f,
@@ -235,6 +236,11 @@ class CEPApplication(tk.Frame):
         if self.player:
             self.player.change_port(self.midi_port_v.get())
         self.update_player_settings_widgets()
+
+    def track_changed(self, *args_):
+        """Backing track selection widget change callback."""
+        if self.player:
+            self.player.change_track(self.track_v.get())
 
     def mode_changed(self, *args_):
         """Scale mode selection widget change callback."""
@@ -327,7 +333,7 @@ class CEPApplication(tk.Frame):
         print("Song length: {}s".format(song_length))
 
         if self.player:
-            track = MAIN_TRACKS[self.track_v.get()]
+            track = self.track_v.get()
             self.start_time = self.player.start(self.exercise, track)
         else:
             self.start_time = time.time()

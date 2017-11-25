@@ -7,7 +7,7 @@ import threading
 import time
 
 from .exercise import LEAD_IN
-from .tracks import LEAD_TRACK
+from .tracks import LEAD_TRACK, MAIN_TRACKS
 
 try:
     import rtmidi
@@ -145,6 +145,12 @@ class CompPlayer:
         self.port = port
         self.port_name = port_name
 
+    def change_track(self, track_name):
+        """Change current backing track."""
+        with self.lock:
+            self.track_name = track_name
+            self.cond.notify()
+
     def prepare_track(self, pattern, bars=1, start=0):
         """Convert a backing track pattern to a list of timed MIDI events.
 
@@ -190,17 +196,23 @@ class CompPlayer:
                         self.cond.wait(0.1)
                     self.start_time = time.time()
                     self.cond.notify()
-                    events = self.prepare_track(LEAD_TRACK,
-                                                LEAD_IN)
-                    events += self.prepare_track(self.track_name,
-                                                 self.exercise.length,
-                                                 LEAD_IN)
-                    while not self.quit and self.start_time and self.exercise and events:
+                    events = []
+                    while not self.quit and self.start_time and self.exercise:
+                        if self.track_name:
+                            events = self.prepare_track(LEAD_TRACK,
+                                                        LEAD_IN)
+                            track = MAIN_TRACKS[self.track_name]
+                            events += self.prepare_track(track,
+                                                         self.exercise.length,
+                                                         LEAD_IN)
+                            self.track_name = None
                         ev_time, message = events[0]
                         now = time.time()
                         if ev_time <= now:
                             events = events[1:]
-                            if self.port:
+                            lag = now - ev_time
+                            if (lag < self.exercise.whole_note_duration / 32
+                                    and self.port):
                                 self.port.send_message(message)
                             if not events:
                                 break
