@@ -12,7 +12,9 @@ from .tracks import DEFAULT_TRACK, MAIN_TRACKS
 
 ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII"]
 
-SCALE_LABEL_FONT = ("serif", -26)
+SCALE_LABEL_FONT = ("serif", -24)
+SCALE_NAME_FONT = ("serif", -26)
+
 BAR_LABEL_FONT = ("serif", -20)
 
 CANVAS_HEIGHT = 50
@@ -38,7 +40,7 @@ CHORD_NAME_DELAY = 2 # beats
 
 class CEPApplication(tk.Frame):
     """Application window."""
-    # pylint: disable=too-many-ancestors
+    # pylint: disable=too-many-ancestors,too-many-instance-attributes
     def __init__(self, master=None):
         super().__init__(master)
         self.start_time = None
@@ -73,14 +75,34 @@ class CEPApplication(tk.Frame):
 
     def create_widgets(self):
         """Create basic window layout and the fixed widgets."""
-        self.scale_l = tk.Label(self, font=SCALE_LABEL_FONT)
-        self.scale_l.pack(side=tk.TOP)
+        # pylint: disable=too-many-statements
 
-        self.chord_d_l = tk.Label(self, font=BAR_LABEL_FONT)
-        self.chord_d_l.pack()
+        labels_f = tk.Frame(self)
+        labels_f.pack(side=tk.TOP)
 
-        self.chord_n_l = tk.Label(self, font=BAR_LABEL_FONT)
-        self.chord_n_l.pack()
+        label = tk.Label(labels_f, text="Scale:", font=SCALE_LABEL_FONT, padx=5)
+        label.grid(row=0, column=0, columnspan=2, sticky=tk.E)
+        self.scale_l = tk.Label(labels_f, font=SCALE_NAME_FONT, padx=5)
+        self.scale_l.grid(row=0, column=2, columnspan=2, sticky=tk.W)
+
+        label = tk.Label(labels_f, text="Tempo:", font=SCALE_LABEL_FONT, padx=5)
+        label.grid(row=1, column=0, columnspan=2, sticky=tk.E)
+        self.tempo_l = tk.Label(labels_f, font=SCALE_NAME_FONT, padx=5)
+        self.tempo_l.grid(row=1, column=2, columnspan=2, sticky=tk.W)
+
+        label = tk.Label(labels_f, text="Current chord:", font=SCALE_LABEL_FONT, padx=5)
+        label.grid(row=2, column=0, rowspan=2, sticky=tk.E)
+        self.chord_d_l = tk.Label(labels_f, justify=tk.LEFT, font=SCALE_NAME_FONT, width=5)
+        self.chord_d_l.grid(row=2, column=1, sticky=tk.W)
+        self.chord_n_l = tk.Label(labels_f, justify=tk.LEFT, font=SCALE_NAME_FONT, width=5)
+        self.chord_n_l.grid(row=3, column=1, sticky=tk.W)
+
+        label = tk.Label(labels_f, text="Next chord:", font=SCALE_LABEL_FONT)
+        label.grid(row=2, column=2, rowspan=2, sticky=tk.E)
+        self.n_chord_d_l = tk.Label(labels_f, justify=tk.LEFT, font=SCALE_NAME_FONT, width=5)
+        self.n_chord_d_l.grid(row=2, column=3, sticky=tk.W)
+        self.n_chord_n_l = tk.Label(labels_f, justify=tk.LEFT, font=SCALE_NAME_FONT, width=5)
+        self.n_chord_n_l.grid(row=3, column=3, sticky=tk.W)
 
         self.canvases_f = tk.Frame(self, padx=0, pady=0)
         self.top_canvas = tk.Canvas(self.canvases_f,
@@ -112,14 +134,11 @@ class CEPApplication(tk.Frame):
 
         self.canvases_f.pack(fill=tk.X, expand=1, pady=0, ipady=0)
 
-        self.e_settings_f = tk.Frame(self)
-        self.e_settings_f.pack()
-
         self.p_settings_f = tk.Frame(self)
         self.p_settings_f.pack()
 
         self.buttons_f = tk.Frame(self)
-        self.buttons_f.pack(side=tk.BOTTOM)
+        self.buttons_f.pack()
 
         self.start_b = tk.Button(self.buttons_f)
         self.start_b["text"] = "Start"
@@ -137,15 +156,20 @@ class CEPApplication(tk.Frame):
         self.quit_b["command"] = self.master.destroy
         self.quit_b.pack(side=tk.LEFT, padx=5, pady=5)
 
+        self.e_settings_f = tk.Frame(self)
+        self.e_settings_f.pack()
+
         self.update_exercise_settings_widgets()
         self.update_player_settings_widgets()
 
-    def update_exercise_settings_widgets(self):
+    def update_exercise_settings_widgets(self): # pylint: disable=invalid-name
         """(Re)create exercise settings widgets.
         """
         for widget in self.e_settings_f.winfo_children():
             widget.destroy()
 
+        label = tk.Label(self.e_settings_f, text="Next exercise settings: ")
+        label.pack(side=tk.LEFT)
         label = tk.Label(self.e_settings_f, text="Tempo:")
         label.pack(side=tk.LEFT)
 
@@ -324,8 +348,10 @@ class CEPApplication(tk.Frame):
             self.player.stop()
 
         self.start_b["text"] = "Restart"
-        self.chord_d_l["text"] = "Current chord degree: –"
-        self.chord_n_l["text"] = "Current chord name: –"
+        self.chord_d_l["text"] = "–"
+        self.chord_n_l["text"] = "–"
+        self.n_chord_d_l["text"] = "–"
+        self.n_chord_n_l["text"] = "–"
 
         self.canvas.xview_moveto(0)
 
@@ -366,15 +392,19 @@ class CEPApplication(tk.Frame):
             self.bar = bar
             if bar >= LEAD_IN:
                 chord_degree = self.exercise.progression[bar - LEAD_IN] + 1
-                self.chord_d_l["text"] = "Current chord degree: {}".format(chord_degree)
-                self.chord_n_l["text"] = "Current chord name: ?"
+                self.chord_d_l["text"] = ROMAN[chord_degree - 1]
+                self.chord_n_l["text"] = "?"
+            if bar >= LEAD_IN - 1 and bar < total_bars - 1:
+                chord_degree = self.exercise.progression[bar - LEAD_IN + 1] + 1
+                self.n_chord_d_l["text"] = ROMAN[chord_degree - 1]
+                self.n_chord_n_l["text"] = "?"
+
 
         if beat != self.beat and bar < total_bars:
             self.beat = beat
             if bar >= LEAD_IN and beat >= CHORD_NAME_DELAY:
                 chord_name = self.exercise.chord_names[bar - LEAD_IN]
-                self.chord_n_l["text"] = "Current chord name: " + chord_name
-
+                self.chord_n_l["text"] = chord_name
 
         canvas_target = int(bar * BAR_LENGTH + beat * BEAT_LENGTH)
         canvas_x = int(self.canvas.canvasx(0))
@@ -411,9 +441,12 @@ class CEPApplication(tk.Frame):
         self.bar = None
         self.beat = None
         self.canvas.xview_moveto(0)
-        self.chord_d_l["text"] = "Current chord degree: –"
-        self.chord_n_l["text"] = "Current chord name: –"
-        self.scale_l["text"] = "The scale is: {}".format(self.exercise.scale_name)
+        self.chord_d_l["text"] = "–"
+        self.chord_n_l["text"] = "–"
+        self.n_chord_d_l["text"] = "–"
+        self.n_chord_n_l["text"] = "–"
+        self.scale_l["text"] = self.exercise.scale_name
+        self.tempo_l["text"] = "{} bpm".format(self.exercise.tempo)
         self.draw_canvas()
         self.start_b["text"] = "Start"
 
