@@ -15,3 +15,10 @@ build_script:
     %PYTHON% setup.py build test sdist
 
     IF %PYTHON_VERSION% == 3.6 %PYTHON% -m nsist installer.cfg
+artifacts:
+- path: build\nsis\Chords_Exercise_Partner_*.exe
+  name: Windows installer
+- path: dist\jajcus.chord_exercise_partner-*.tar.gz
+  name: sdist
+- path: dist\jajcus.chord_exercise_partner-*.whl
+  name: wheel
