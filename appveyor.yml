@@ -1,0 +1,17 @@
+version: 0.1.{build}
+environment:
+  matrix:
+  - PYTHON_VERSION: 3.4
+    PYTHON: C:\Python34\Python
+  - PYTHON_VERSION: 3.6
+    PYTHON: C:\Python36\Python
+install:
+- cmd: >-
+    %PYTHON% -m ensurepip --upgrade
+
+    %PYTHON% -m pip install setuptools python-rtmidi pynsist --upgrade
+build_script:
+- cmd: >-
+    %PYTHON% setup.py build test sdist
+
+    %PYTHON% -m nsist installer.cfg
