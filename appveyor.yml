@@ -14,4 +14,4 @@ build_script:
 - cmd: >-
     %PYTHON% setup.py build test sdist
 
-    %PYTHON% -m nsist installer.cfg
+    IF %PYTHON_VERSION% == 3.6 %PYTHON% -m nsist installer.cfg
