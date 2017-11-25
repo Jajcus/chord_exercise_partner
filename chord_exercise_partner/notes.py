@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+# -*- coding: utf-8 -*-
 
 """
 Basic music theory – note names, scale harmonisation.
