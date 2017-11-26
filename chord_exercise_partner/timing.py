@@ -6,11 +6,13 @@
 import threading
 import time
 
-
 def check_time_resolution(func=time.time):
+    """Check resolution of a time measuring function.
+
+    Returns the smallest change in function value detected."""
     min_step = None
     last_t = func()
-    for i in range(10):
+    for _ in range(10):
         while True:
             now = func()
             step = now - last_t
@@ -24,19 +26,20 @@ def check_time_resolution(func=time.time):
                 break
     return min_step
 
-SLEEP_SAMPLES = [ 0.33333, 0.1, 0.033333, 0.01, 0.0033333, 0.001, 0.00033333, 0.0001 ]
+SLEEP_SAMPLES = [0.033333, 0.01, 0.0033333, 0.001, 0.00033333, 0.0001]
 
 def check_sleep_precision():
+    """Measure threading.Condition.wait() time precision."""
     cond = threading.Condition()
     report = ["{:^12} {:^20}".format("interval", "error"),
               "{:^12} {:^6} {:^6} {:^6}".format("", "min", "mean", "max")]
     with cond:
         for interval in SLEEP_SAMPLES:
             results = []
-            for i in range(10):
+            for _ in range(10):
                 now = time.perf_counter()
                 target = now + interval
-                cond.wait(timeout = interval)
+                cond.wait(timeout=interval)
                 now = time.perf_counter()
                 results.append(now - target)
             results.sort()
@@ -48,6 +51,7 @@ def check_sleep_precision():
     print("Thread sleep precision (ms):\n" + "\n".join(report))
 
 if __name__ == "__main__":
+    # pylint: disable=invalid-name
     time_res = check_time_resolution(time.time)
     print("Detected time measurement resolution: {:0.6f} ms".format(time_res * 1000))
     time_res = check_time_resolution(time.perf_counter)

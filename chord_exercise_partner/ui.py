@@ -455,7 +455,7 @@ def main():
     """Main entry point."""
     time_res = check_time_resolution()
     print("Detected time measurement resolution: {:0.6f} ms"
-            .format(time_res * 1000))
+          .format(time_res * 1000))
     if time_res < 0.010:
         print("WARNING: inadequate time measurement resolution!")
     root_w = tk.Tk()
