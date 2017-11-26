@@ -34,7 +34,9 @@ class CompPlayer:
     """
     def __init__(self):
         self.exercise = None
-        self.start_time = None
+        self.start_time = None    # wall clock start time
+        self.p_start_time = None  # precise start time (probably meaningful
+                                  # only in the player thread)
         self.quit = False
         self.port = None
         self.port_name = None
@@ -163,7 +165,7 @@ class CompPlayer:
         for bar in range(bars):
             for bar_time, notes in pattern[bar % pattern_bars]:
                 rel_time = (start + bar + bar_time) * bar_d
-                on_time = self.start_time + rel_time
+                on_time = self.p_start_time + rel_time
                 for channel, note, velocity, duration in notes:
                     off_time = on_time + duration * whn_d
                     message = [0x90 + (channel - 1) % 16,
@@ -195,6 +197,7 @@ class CompPlayer:
                     while not self.exercise:
                         self.cond.wait(0.1)
                     self.start_time = time.time()
+                    self.p_start_time = time.perf_counter()
                     self.cond.notify()
                     events = []
                     while not self.quit and self.start_time and self.exercise:
@@ -207,7 +210,7 @@ class CompPlayer:
                                                          LEAD_IN)
                             self.track_name = None
                         ev_time, message = events[0]
-                        now = time.time()
+                        now = time.perf_counter()
                         if ev_time <= now:
                             events = events[1:]
                             lag = now - ev_time
@@ -217,7 +220,7 @@ class CompPlayer:
                             if not events:
                                 break
                             ev_time = events[0][0]
-                            now = time.time() # send_message() could eat some
+                            now = time.perf_counter() # send_message() could eat some
                         if ev_time > now:
                             self.cond.wait(ev_time - now)
                     self.start_time = None
