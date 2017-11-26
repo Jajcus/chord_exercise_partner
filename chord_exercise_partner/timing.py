@@ -7,12 +7,12 @@ import threading
 import time
 
 
-def check_time_resolution():
+def check_time_resolution(func=time.time):
     min_step = None
-    last_t = time.time()
+    last_t = func()
     for i in range(10):
         while True:
-            now = time.time()
+            now = func()
             step = now - last_t
             last_t = now
             if step < 0.0:
@@ -34,10 +34,10 @@ def check_sleep_precision():
         for interval in SLEEP_SAMPLES:
             results = []
             for i in range(10):
-                now = time.time()
+                now = time.perf_counter()
                 target = now + interval
                 cond.wait(timeout = interval)
-                now = time.time()
+                now = time.perf_counter()
                 results.append(now - target)
             results.sort()
             min_v = results[0]
@@ -48,6 +48,8 @@ def check_sleep_precision():
     print("Thread sleep precision (ms):\n" + "\n".join(report))
 
 if __name__ == "__main__":
-    time_res = check_time_resolution()
+    time_res = check_time_resolution(time.time)
     print("Detected time measurement resolution: {:0.6f} ms".format(time_res * 1000))
+    time_res = check_time_resolution(time.perf_counter)
+    print("Detected precise time measurement resolution: {:0.6f} ms".format(time_res * 1000))
     check_sleep_precision()
