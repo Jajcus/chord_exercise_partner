@@ -5,7 +5,7 @@ from setuptools import setup
 
 setup(
     name="jajcus.chord_exercise_partner",
-    version="0.1",
+    version="0.2",
     packages=["jajcus.chord_exercise_partner"],
     package_dir={'jajcus': ''},
     entry_points={
