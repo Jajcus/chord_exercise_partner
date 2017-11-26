@@ -8,6 +8,7 @@ import tkinter as tk
 from .exercise import DEFAULT_TEMPO, LEAD_IN, Exercise
 from .notes import SCALES, normalize_scale_root
 from .player import CompPlayer, MIDINotAvailable
+from .timing import check_time_resolution
 from .tracks import DEFAULT_TRACK, MAIN_TRACKS
 
 ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII"]
@@ -452,6 +453,11 @@ class CEPApplication(tk.Frame):
 
 def main():
     """Main entry point."""
+    time_res = check_time_resolution()
+    print("Detected time measurement resolution: {:0.6f} ms"
+            .format(time_res * 1000))
+    if time_res < 0.010:
+        print("WARNING: inadequate time measurement resolution!")
     root_w = tk.Tk()
     root_w.title("Chord Exercise Partner")
     app = CEPApplication(master=root_w)
