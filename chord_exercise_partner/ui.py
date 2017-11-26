@@ -61,6 +61,7 @@ class CEPApplication(tk.Frame):
         self.track_o = None
         self.midi_port_v = None
         self.midi_port_o = None
+        self.latency_s = None
 
         try:
             self.player = CompPlayer()
@@ -256,6 +257,17 @@ class CEPApplication(tk.Frame):
                                              *self.player.available_ports)
             self.midi_port_o.pack(side=tk.LEFT)
 
+            label = tk.Label(self.p_settings_f, text="Latency:")
+            label.pack(side=tk.LEFT)
+
+            # pylint: disable=no-value-for-parameter
+            self.latency_s = tk.Scale(self.p_settings_f,
+                                      from_=-500.0,
+                                      to=500.0,
+                                      resolution=1,
+                                      orient=tk.HORIZONTAL)
+            self.latency_s.pack(side=tk.LEFT)
+
     def midi_port_changed(self, *args_):
         """MIDI port selection widget change callback."""
         if self.player:
@@ -380,11 +392,14 @@ class CEPApplication(tk.Frame):
 
         now = time.time()
         total_bars = LEAD_IN + self.exercise.length
-        pos = now - self.start_time
+        if self.latency_s:
+            latency = self.latency_s.get() / 1000.0
+        else:
+            latency = 0
+        pos = now - self.start_time - latency
 
         if pos < 0:
-            print("Time runs backwards?!")
-            return
+            pos = 0
 
         bar = int(pos // self.exercise.bar_duration)
         beat = (pos % self.exercise.bar_duration) / self.exercise.beat_duration
@@ -410,7 +425,7 @@ class CEPApplication(tk.Frame):
         canvas_target = int(bar * BAR_LENGTH + beat * BEAT_LENGTH)
         canvas_x = int(self.canvas.canvasx(0))
 
-        if canvas_target > canvas_x:
+        if canvas_target != canvas_x:
             self.canvas.xview_scroll(canvas_target - canvas_x, tk.UNITS)
         if now < self.end_time:
             self.canvas.after(10, self.progress)
