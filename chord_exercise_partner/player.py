@@ -9,6 +9,10 @@ import time
 from .exercise import LEAD_IN
 from .tracks import LEAD_TRACK, MAIN_TRACKS
 
+# play notes that early or late, compensating for sleep time precision
+ALLOW_EARLY = 0.001  # seconds
+ALLOW_LATE = 0.020   # seconds
+
 try:
     import rtmidi
 except ImportError as err:
@@ -211,11 +215,10 @@ class CompPlayer:
                             self.track_name = None
                         ev_time, message = events[0]
                         now = time.perf_counter()
-                        if ev_time <= now:
+                        lag = now - ev_time
+                        if lag > -ALLOW_EARLY:
                             events = events[1:]
-                            lag = now - ev_time
-                            if (lag < self.exercise.whole_note_duration / 32
-                                    and self.port):
+                            if lag < ALLOW_LATE and self.port:
                                 self.port.send_message(message)
                             if not events:
                                 break
