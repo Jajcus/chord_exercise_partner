@@ -8,7 +8,7 @@ import tkinter as tk
 from .exercise import DEFAULT_TEMPO, LEAD_IN, Exercise
 from .notes import SCALES, normalize_scale_root
 from .player import CompPlayer, MIDINotAvailable
-from .timing import check_time_resolution
+from .timing import check_sleep_precision, check_time_resolution
 from .tracks import DEFAULT_TRACK, MAIN_TRACKS
 
 ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII"]
@@ -471,8 +471,16 @@ def main():
     time_res = check_time_resolution()
     print("Detected time measurement resolution: {:0.6f} ms"
           .format(time_res * 1000))
-    if time_res < 0.010:
+    if time_res > 0.020:
         print("WARNING: inadequate time measurement resolution!")
+    time_res = check_time_resolution(time.perf_counter)
+    print("Detected precise time measurement resolution: {:0.6f} ms"
+          .format(time_res * 1000))
+    if time_res > 0.001:
+        print("WARNING: inadequate precise time measurement resolution!")
+    sleep_prec = check_sleep_precision()
+    if sleep_prec > 0.010:
+        print("WARNING: inadequate thread sleep time precision!")
     root_w = tk.Tk()
     root_w.title("Chord Exercise Partner")
     app = CEPApplication(master=root_w)

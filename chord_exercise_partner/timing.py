@@ -26,13 +26,14 @@ def check_time_resolution(func=time.time):
                 break
     return min_step
 
-SLEEP_SAMPLES = [0.033333, 0.01, 0.0033333, 0.001, 0.00033333, 0.0001]
+SLEEP_SAMPLES = [0.033333, 0.01, 0.0033333, 0.001, 0.00033333, 0.0001, 0.0]
 
 def check_sleep_precision():
     """Measure threading.Condition.wait() time precision."""
     cond = threading.Condition()
     report = ["{:^12} {:^20}".format("interval", "error"),
               "{:^12} {:^6} {:^6} {:^6}".format("", "min", "mean", "max")]
+    result = 0
     with cond:
         for interval in SLEEP_SAMPLES:
             results = []
@@ -46,9 +47,11 @@ def check_sleep_precision():
             min_v = results[0]
             max_v = results[-1]
             mean = sum(results[2:-2]) / (len(results) - 4)
+            result = max(result, mean)
             report.append("{:12.6f} {:^6.3f} {:^6.3f} {:^6.3f}"
                           .format(interval * 1000, min_v * 1000, mean * 1000, max_v * 1000))
     print("Thread sleep precision (ms):\n" + "\n".join(report))
+    return result
 
 if __name__ == "__main__":
     # pylint: disable=invalid-name
