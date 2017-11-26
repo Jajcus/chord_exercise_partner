@@ -1,7 +1,7 @@
-Chord Exercise Partneer
+Chord Exercise Partner
 =======================
 
-Random scale harmonization excercise generator and simple play-along tool
+Random scale harmonization exercise generator and simple play-along tool
 providing tempo indication and optional backing track.
 
 The program will draw a random major scale and then generate random chord
