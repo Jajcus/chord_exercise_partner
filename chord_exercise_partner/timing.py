@@ -11,15 +11,17 @@ def check_time_resolution():
     min_step = None
     last_t = time.time()
     for i in range(10):
-        now = time.time()
-        step = now - last_t
-        last_t = now
-        if step < 0.0:
-            print("Time went backwards!")
-            continue
-        elif step > 0.0:
-            if min_step is None or step < min_step:
-                min_step = step
+        while True:
+            now = time.time()
+            step = now - last_t
+            last_t = now
+            if step < 0.0:
+                print("Time went backwards!")
+                break
+            elif step > 0.0:
+                if min_step is None or step < min_step:
+                    min_step = step
+                break
     return min_step
 
 SLEEP_SAMPLES = [ 0.33333, 0.1, 0.033333, 0.01, 0.0033333, 0.001, 0.00033333, 0.0001 ]
