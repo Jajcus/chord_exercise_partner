@@ -12,6 +12,8 @@ install:
     %PYTHON% -m pip install setuptools python-rtmidi pynsist --upgrade
 build_script:
 - cmd: >-
+    %PYTHON% utils/check_version.py
+
     %PYTHON% setup.py build test sdist
 
     %PYTHON% -m chord_exercise_partner.timing
