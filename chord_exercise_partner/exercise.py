@@ -4,7 +4,7 @@
 
 import random
 
-from .notes import SCALES, chord_name, normalize_scale_root, note_name
+from .notes import SCALES, chord_name, normalize_scale_root, note_name, chord_notes
 
 LEAD_IN = 2 # bars
 DEFAULT_LENGTH = 10 # bars
@@ -55,3 +55,10 @@ class Exercise:
         self.chord_names = [chord_name(root, x, mode, harmonization)
                             for x in self.progression]
         #print("Which is: {}".format(",".join(self.chord_names)))
+
+    def chord_notes(self, bar):
+        """Return chord notes (relative to C note) at given bar."""
+        return chord_notes(self.root,
+                           self.progression[bar],
+                           self.mode,
+                           self.harmonization)

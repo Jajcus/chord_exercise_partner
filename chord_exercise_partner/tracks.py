@@ -4,14 +4,20 @@
 
 # pylint: disable=bad-continuation,bad-whitespace
 
+from .midi import program_change
+
 # General MIDI drum note numbers
 D_BASS = 35
 D_STICK = 37
 D_SNARE = 38
 D_HH_CLOSED = 42
 
+CH_PIANO = 1
+
 # General MIDI drums channel
 CH_DRUMS = 10
+
+MIDI_INIT = [program_change(CH_PIANO, 1)]
 
 #   [(time_in_bar, [(channel, note, velocity, duration), ...]),...]
 LEAD_TRACK = [
@@ -54,6 +60,24 @@ MAIN_TRACKS = {
     (0.75 , [(CH_DRUMS, D_SNARE, 0.5, 0.25), (CH_DRUMS, D_HH_CLOSED, 0.5, 0.125)]),
     (0.917, [(CH_DRUMS, D_HH_CLOSED, 0.5, 0.125)]),
     ]
-    ]}
+    ],
+        "straight + chords" : [
+    # single bar
+    [
+    (0.0  , [(CH_PIANO, "chord", 0.5, 0.25),]),
+    (0.0  , [(CH_DRUMS, D_BASS, 0.5, 0.5), (CH_DRUMS, D_HH_CLOSED, 0.5, 0.125)]),
+    (0.125, [(CH_DRUMS, D_HH_CLOSED, 0.5, 0.125)]),
+    (0.25 , [(CH_PIANO, "chord", 0.5, 0.25),]),
+    (0.25 , [(CH_DRUMS, D_SNARE, 0.5, 0.25), (CH_DRUMS, D_HH_CLOSED, 0.5, 0.125)]),
+    (0.375, [(CH_DRUMS, D_HH_CLOSED, 0.5, 0.125)]),
+    (0.5  , [(CH_PIANO, "chord", 0.5, 0.25),]),
+    (0.5  , [(CH_DRUMS, D_BASS, 0.5, 0.5), (CH_DRUMS, D_HH_CLOSED, 0.5, 0.125)]),
+    (0.625, [(CH_DRUMS, D_HH_CLOSED, 0.5, 0.125)]),
+    (0.75 , [(CH_PIANO, "chord", 0.5, 0.25),]),
+    (0.75 , [(CH_DRUMS, D_SNARE, 0.5, 0.25), (CH_DRUMS, D_HH_CLOSED, 0.5, 0.125)]),
+    (0.875, [(CH_DRUMS, D_HH_CLOSED, 0.5, 0.125)]),
+    ]
+    ],
+ }
 
 DEFAULT_TRACK = "straight"

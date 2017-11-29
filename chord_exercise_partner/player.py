@@ -6,8 +6,9 @@ import re
 import threading
 import time
 
+from .midi import note_on, note_off, MIDDLE_C
 from .exercise import LEAD_IN
-from .tracks import LEAD_TRACK, MAIN_TRACKS
+from .tracks import LEAD_TRACK, MAIN_TRACKS, MIDI_INIT
 
 # play notes that early or late, compensating for sleep time precision
 ALLOW_EARLY = 0.001  # seconds
@@ -167,19 +168,23 @@ class CompPlayer:
         bar_d = self.exercise.bar_duration
         whn_d = self.exercise.whole_note_duration
         for bar in range(bars):
+            song_bar = start + bar
+            ex_bar = song_bar - LEAD_IN
             for bar_time, notes in pattern[bar % pattern_bars]:
-                rel_time = (start + bar + bar_time) * bar_d
+                rel_time = (song_bar + bar_time) * bar_d
                 on_time = self.p_start_time + rel_time
                 for channel, note, velocity, duration in notes:
                     off_time = on_time + duration * whn_d
-                    message = [0x90 + (channel - 1) % 16,
-                               note % 128,
-                               int(velocity * 127) % 128]
-                    events.append((on_time, message))
-                    message = [0x80 + (channel - 1) % 16,
-                               note % 128,
-                               int(velocity * 127) % 128]
-                    events.append((off_time, message))
+                    if note == "chord":
+                        if ex_bar < 0 or ex_bar >= self.exercise.length:
+                            continue
+                        for chord_note in self.exercise.chord_notes(ex_bar):
+                            note = MIDDLE_C + chord_note
+                            events.append((on_time, note_on(channel, note, velocity)))
+                            events.append((off_time, note_off(channel, note)))
+                    else:
+                        events.append((on_time, note_on(channel, note, velocity)))
+                        events.append((off_time, note_off(channel, note)))
         return sorted(events)
 
     def start(self, exercise, main_track):
@@ -206,6 +211,8 @@ class CompPlayer:
                     events = []
                     while not self.quit and self.start_time and self.exercise:
                         if self.track_name:
+                            for message in MIDI_INIT:
+                                self.port.send_message(message)
                             events = self.prepare_track(LEAD_TRACK,
                                                         LEAD_IN)
                             track = MAIN_TRACKS[self.track_name]

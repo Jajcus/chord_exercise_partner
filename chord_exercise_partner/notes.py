@@ -63,6 +63,16 @@ HARMONIZATION = {
     },
     }
 
+CHORD_NOTES = {
+    "": (0, 4, 7),
+    "m": (0, 3, 7),
+    "dim": (0, 3, 6),
+    "7": (0, 4, 7, 10),
+    "maj7": (0, 4, 7, 11),
+    "m7": (0, 3, 7, 10),
+    "m7♭5": (0, 3, 6, 10),
+    }
+
 def note_name(note):
     """Convert note (pitch class) number to a note name."""
     flats = FLATS[note]
@@ -102,3 +112,19 @@ def chord_name(root, degree, mode, harmonisation="triads"):
     if not isinstance(quality, str):
         return " or ".join((name + q) for q in quality)
     return name + quality
+
+def chord_notes(root, degree, mode, harmonisation="triads"):
+    """Return name of a chord build on given degree of a root-mode scale."""
+    if isinstance(root, int):
+        root_note = root
+    else:
+        root_note = NOTE_NUMBERS[root]
+
+    note, quality = HARMONIZATION[harmonisation][mode][degree]
+
+    if not isinstance(quality, str):
+        quality = quality[0]
+
+    chord_root = (root_note + note) % 12
+
+    return [chord_root + n for n in CHORD_NOTES[quality]]
