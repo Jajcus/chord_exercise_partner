@@ -19,6 +19,8 @@ build_script:
     %PYTHON% -m chord_exercise_partner.timing
 
     IF %PYTHON_VERSION% == 3.6 %PYTHON% -m nsist installer.cfg
+
+    IF %PYTHON_VERSION% == 3.6 %PYTHON% setup.py bdist_msi
 artifacts:
 - path: build\nsis\Chords_Exercise_Partner_*.exe
   name: Windows installer

@@ -7,6 +7,9 @@ before_install:
     - sudo apt-get install libasound2-dev -y
 install:
     - pip install setuptools python-rtmidi --upgrade
-script: python setup.py build test
+script:
+    - python setup.py build test
+    - python sdist bdist_wheel
+    - python build_exe --build-exe target
 
 # vi: sts=4 sw=4 et
