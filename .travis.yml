@@ -8,6 +8,7 @@ before_install:
 install:
 - pip install setuptools python-rtmidi cx_Freeze==6.0b1 --upgrade
 script:
+- utils/check_version.py
 - python setup.py build test
 - python setup.py sdist bdist_wheel
 - export BUILD_VER=${TRAVIS_TAG:-b${TRAVIS_BUILD_NUMBER}}
