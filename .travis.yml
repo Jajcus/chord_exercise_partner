@@ -6,7 +6,7 @@ before_install:
     - sudo apt-get update -q
     - sudo apt-get install libasound2-dev -y
 install:
-    - pip install setuptools python-rtmidi --upgrade
+    - pip install setuptools python-rtmidi cx_Freeze --upgrade
 script:
     - python setup.py build test
     - python setup.py sdist bdist_wheel
