@@ -15,12 +15,12 @@ script:
 - cd dist ; tar czvf chord_exercise_partner-linux-x64-${BUILD_VER}.tar.gz chord_exercise_partner-linux-x64-${BUILD_VER}; cd ..
 before_deploy:
 - export RELEASE_FILE="$(readlink -f dist/chord_exercise_partner-linux-*.tar.gz)"
-- echo "File to deploy: $RELEASE_FILE"
 deploy:
   provider: releases
   api_key:
     secure: hqEiLfvldYlPSneu+f5SkqF/XNxIvT/aRnN0+ujDLALKl2ko59yu7qjKuJdzQtTyfLI6jYULXBQx9LWkTSljC8gzuWmLrnt0PhGhegPzriCjwpYtm4sS5tobAldiC1MxH8oTH1rKqdL5PAbDhCVQSucyBbdjkIQ4v98cWiLoNdpRBLGMpazTqXxviCZI1qOtZM9BhcOpardAAVzud/hxErDvJID6omUGMxnaWJ8NeFBQ349ukUwvn6Scf6vEfHNV39TprTPhTnW62KM+cXU+dFyZGT52cdJZR0PeWXKmQxjhoO1IFnwlAuYnMKHXqlMRkTdZK2qgJq8e1/6EbyiQHQZkkrwY8Y6D+pkLHWO9GbglUzzgnQORTTCl5nK6xnzgFxnwhIc+mmDVCEWbUidC9ObN2seyXvIG9xpl2i8tdJJLeVOXTliTk7KxT8ZOdseKM2PJK6lo1KrIjo6TGiTbSyZGc7LDvZtVYCevXIXrszIuoLz20jAyw0zox/TRejjlUJtW5nm6Nm0WWCzML+bZ9P78W9TsQDmbik/q9RRVCfLVxR52xEbyltOgGLKvPXlRTvOQb3Atb70L8bGSfcLhWRVYsXzFsnda5AJoV/1oSOEZOreuoDUBaH2Sm/ul08Ec/+8UNjbz1hgs910tviRZYb/VJ1dcEl1XMKBJYqcxo88=
   file: ${RELEASE_FILE}
+  draft: true
   on:
     repo: Jajcus/chord_exercise_partner
     tags: true
