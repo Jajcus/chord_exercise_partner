@@ -9,7 +9,8 @@ install:
     - pip install setuptools python-rtmidi --upgrade
 script:
     - python setup.py build test
-    - python sdist bdist_wheel
-    - python build_exe --build-exe target
+    - python setup.py sdist bdist_wheel
+    - python setup.py build_exe --build-exe target
+    - cd target && tar czvf ../chord_exercise_partner-${TRAVIS_TAG:-b${TRAVIS_BUILD_NUMBER}}.tar.gz *
 
 # vi: sts=4 sw=4 et
