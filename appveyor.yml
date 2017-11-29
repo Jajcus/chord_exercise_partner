@@ -28,3 +28,15 @@ artifacts:
   name: sdist
 - path: dist\jajcus.chord_exercise_partner-*.whl
   name: wheel
+deploy:
+  description: '$(appveyor_build_version) release'
+  provider: GitHub
+  auth_token:
+    secure: Zx/t/QC8IU3f1wHGwhnuDKHhBOvab3dB4TKP/rr4v4pQ11g6JGIvmpXj3nx9tIt3
+  artifact: exe
+  draft: true
+  prerelease: true
+  force_update: true
+  on:
+    branch: master
+    appveyor_repo_tag: true
