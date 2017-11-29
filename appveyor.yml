@@ -22,7 +22,7 @@ build_script:
 
     IF %PYTHON_VERSION% == 3.6 %PYTHON% setup.py bdist_msi
 artifacts:
-- path: build\nsis\chords_exercise_partner-*.exe
+- path: build\nsis\chord_exercise_partner-*.exe
   name: exe
 - path: dist\jajcus.chord_exercise_partner-*.tar.gz
   name: sdist
