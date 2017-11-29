@@ -1,7 +1,9 @@
 *~
 /build
 /dist
+/target
 *.egg-info
 *.pyc
 pylint.log
 .*.swp
+chord_exercise_partner-*.tar.gz
