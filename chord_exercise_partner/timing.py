@@ -6,6 +6,7 @@
 import threading
 import time
 
+
 def check_time_resolution(func=time.time):
     """Check resolution of a time measuring function.
 

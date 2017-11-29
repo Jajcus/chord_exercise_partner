@@ -6,7 +6,7 @@ import time
 import tkinter as tk
 
 from .exercise import DEFAULT_TEMPO, LEAD_IN, Exercise
-from .notes import SCALES, normalize_scale_root
+from .notes import HARMONIZATION, SCALES, normalize_scale_root
 from .player import CompPlayer, MIDINotAvailable
 from .timing import check_sleep_precision, check_time_resolution
 from .tracks import DEFAULT_TRACK, MAIN_TRACKS
@@ -56,6 +56,8 @@ class CEPApplication(tk.Frame):
         self.scale_root_o = None
         self.scale_mode_v = None
         self.scale_mode_o = None
+        self.harmonization_v = None
+        self.harmonization_o = None
 
         self.track_v = None
         self.track_o = None
@@ -94,16 +96,16 @@ class CEPApplication(tk.Frame):
 
         label = tk.Label(labels_f, text="Current chord:", font=SCALE_LABEL_FONT, padx=5)
         label.grid(row=2, column=0, rowspan=2, sticky=tk.E)
-        self.chord_d_l = tk.Label(labels_f, justify=tk.LEFT, font=SCALE_NAME_FONT, width=5)
+        self.chord_d_l = tk.Label(labels_f, justify=tk.LEFT, font=SCALE_NAME_FONT, width=8)
         self.chord_d_l.grid(row=2, column=1, sticky=tk.W)
-        self.chord_n_l = tk.Label(labels_f, justify=tk.LEFT, font=SCALE_NAME_FONT, width=5)
+        self.chord_n_l = tk.Label(labels_f, justify=tk.LEFT, font=SCALE_NAME_FONT, width=8)
         self.chord_n_l.grid(row=3, column=1, sticky=tk.W)
 
         label = tk.Label(labels_f, text="Next chord:", font=SCALE_LABEL_FONT)
         label.grid(row=2, column=2, rowspan=2, sticky=tk.E)
-        self.n_chord_d_l = tk.Label(labels_f, justify=tk.LEFT, font=SCALE_NAME_FONT, width=5)
+        self.n_chord_d_l = tk.Label(labels_f, justify=tk.LEFT, font=SCALE_NAME_FONT, width=8)
         self.n_chord_d_l.grid(row=2, column=3, sticky=tk.W)
-        self.n_chord_n_l = tk.Label(labels_f, justify=tk.LEFT, font=SCALE_NAME_FONT, width=5)
+        self.n_chord_n_l = tk.Label(labels_f, justify=tk.LEFT, font=SCALE_NAME_FONT, width=8)
         self.n_chord_n_l.grid(row=3, column=3, sticky=tk.W)
 
         self.canvases_f = tk.Frame(self, padx=0, pady=0)
@@ -216,6 +218,22 @@ class CEPApplication(tk.Frame):
                                           self.scale_mode_v,
                                           *options)
         self.scale_mode_o.pack(side=tk.LEFT)
+
+        label = tk.Label(self.e_settings_f, text="Harmonization:")
+        label.pack(side=tk.LEFT)
+
+        if not self.harmonization_v:
+            self.harmonization_v = tk.StringVar(self.e_settings_f)
+            if self.exercise:
+                self.harmonization_v.set(self.exercise.harmonization)
+            else:
+                self.harmonization_v.set("triads")
+
+        options = list(HARMONIZATION)
+        self.harmonization_o = tk.OptionMenu(self.e_settings_f,
+                                             self.harmonization_v,
+                                             *options)
+        self.harmonization_o.pack(side=tk.LEFT)
 
     def update_player_settings_widgets(self):
         """(Re)create player settings widgets.
@@ -448,9 +466,14 @@ class CEPApplication(tk.Frame):
                 root = None
         else:
             root = None
+        if self.harmonization_v:
+            harmonization = self.harmonization_v.get()
+        else:
+            harmonization = "triads"
         self.exercise = Exercise(tempo=tempo,
                                  root=root,
-                                 mode=mode)
+                                 mode=mode,
+                                 harmonization=harmonization)
         self.tempo_v.set(self.exercise.tempo)
         self.start_time = None
         self.end_time = None

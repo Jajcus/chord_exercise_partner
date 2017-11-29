@@ -17,13 +17,14 @@ class Exercise:
     """An exercise – a scale and chord progression to play."""
     # pylint: disable=too-few-public-methods
     def __init__(self, tempo=DEFAULT_TEMPO, length=DEFAULT_LENGTH,
-                 root=None, mode="major"):
+                 root=None, mode="major", harmonization="triads"):
         random.seed()
 
         self.tempo = tempo
         self.length = length
 
         self.mode = mode
+        self.harmonization = harmonization
 
         if root is not None:
             if isinstance(root, str):
@@ -51,5 +52,6 @@ class Exercise:
 
         roman_numbers = [ROMAN[x] for x in self.progression]
         print("The progression is: {}".format(",".join(roman_numbers)))
-        self.chord_names = [chord_name(root, x, mode) for x in self.progression]
+        self.chord_names = [chord_name(root, x, mode, harmonization)
+                            for x in self.progression]
         #print("Which is: {}".format(",".join(self.chord_names)))
