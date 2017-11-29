@@ -23,9 +23,13 @@ print("setup.py version:", setup_version)
 appveyor_version = extract("appveyor.yml", r'version:\s*([0-9.]+)\.\{build\}')
 print("AppVeyor version:", appveyor_version)
 
-REGEXP = r"^\[Application\]\n[^\[]*^version=(.*)$"
+REGEXP = r"^\[Application\]\n[^\[]*^version=\s*(\S*)$"
 installer_version = extract("installer.cfg", REGEXP)
 print("Windows installer version:", installer_version)
+
+REGEXP = r"^\[Build\]\n[^\[]*^installer_name\s*=.*-win32-(.*)\.exe$"
+installer_name_version = extract("installer.cfg", REGEXP)
+print("Windows installer name version:", installer_name_version)
 
 if "-" not in git_version:
     # a tagged release
@@ -46,6 +50,10 @@ if appveyor_version != setup_version:
 
 if installer_version != setup_version:
     print("Wrong version in installer.cfg!")
+    sys.exit(1)
+
+if installer_name_version != setup_version:
+    print("Wrong version in installer_name in installer.cfg!")
     sys.exit(1)
 
 print("Versions OK! :-)")

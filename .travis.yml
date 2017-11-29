@@ -10,7 +10,7 @@ install:
 script:
     - python setup.py build test
     - python setup.py sdist bdist_wheel
-    - python setup.py build_exe --build-exe target
-    - cd target && tar czvf ../chord_exercise_partner-${TRAVIS_TAG:-b${TRAVIS_BUILD_NUMBER}}.tar.gz *
+    - python setup.py build_exe --build-exe chord_exercise_partner-linux-x64-${TRAVIS_TAG:-b${TRAVIS_BUILD_NUMBER}}
+    - tar czvf chord_exercise_partner-linux-x64-${TRAVIS_TAG:-b${TRAVIS_BUILD_NUMBER}}.tar.gz chord_exercise_partner-linux-x64-${TRAVIS_TAG:-b${TRAVIS_BUILD_NUMBER}}
 
 # vi: sts=4 sw=4 et
