@@ -6,8 +6,8 @@ import re
 import threading
 import time
 
-from .midi import note_on, note_off, MIDDLE_C
 from .exercise import LEAD_IN
+from .midi import MIDDLE_C, note_off, note_on
 from .tracks import LEAD_TRACK, MAIN_TRACKS, MIDI_INIT
 
 # play notes that early or late, compensating for sleep time precision

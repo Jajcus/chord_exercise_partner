@@ -4,7 +4,9 @@
 
 import random
 
-from .notes import SCALES, chord_name, normalize_scale_root, note_name, chord_notes
+from .notes import (SCALES, chord_name, chord_notes, normalize_scale_root,
+                    note_name)
+from .progressions import get_progression
 
 LEAD_IN = 2 # bars
 DEFAULT_LENGTH = 10 # bars
@@ -17,7 +19,8 @@ class Exercise:
     """An exercise – a scale and chord progression to play."""
     # pylint: disable=too-few-public-methods
     def __init__(self, tempo=DEFAULT_TEMPO, length=DEFAULT_LENGTH,
-                 root=None, mode="major", harmonization="triads"):
+                 root=None, mode="major", harmonization="triads",
+                 progression=None):
         random.seed()
 
         self.tempo = tempo
@@ -48,7 +51,10 @@ class Exercise:
 
         print("The scale is:", self.scale_name)
 
-        self.progression = [random.randint(0, 6) for i in range(length)]
+        if progression:
+            self.progression = get_progression(progression, length)
+        else:
+            self.progression = [random.randint(0, 6) for i in range(length)]
 
         roman_numbers = [ROMAN[x] for x in self.progression]
         print("The progression is: {}".format(",".join(roman_numbers)))

@@ -5,9 +5,10 @@
 import time
 import tkinter as tk
 
-from .exercise import DEFAULT_TEMPO, LEAD_IN, Exercise
+from .exercise import DEFAULT_LENGTH, DEFAULT_TEMPO, LEAD_IN, Exercise
 from .notes import HARMONIZATION, SCALES, normalize_scale_root
 from .player import CompPlayer, MIDINotAvailable
+from .progressions import get_progression, get_progressions, progression_length
 from .timing import check_sleep_precision, check_time_resolution
 from .tracks import DEFAULT_TRACK, MAIN_TRACKS
 
@@ -58,6 +59,10 @@ class CEPApplication(tk.Frame):
         self.scale_mode_o = None
         self.harmonization_v = None
         self.harmonization_o = None
+        self.length_v = None
+        self.length_o = None
+        self.progression_v = None
+        self.progression_o = None
 
         self.track_v = None
         self.track_o = None
@@ -160,8 +165,13 @@ class CEPApplication(tk.Frame):
         self.quit_b["command"] = self.master.destroy
         self.quit_b.pack(side=tk.LEFT, padx=5, pady=5)
 
-        self.e_settings_f = tk.Frame(self)
-        self.e_settings_f.pack()
+        label = tk.Label(self, text="Next exercise settings: ")
+        label.pack()
+
+        self.e_settings_f1 = tk.Frame(self)
+        self.e_settings_f1.pack()
+        self.e_settings_f2 = tk.Frame(self)
+        self.e_settings_f2.pack()
 
         self.update_exercise_settings_widgets()
         self.update_player_settings_widgets()
@@ -169,31 +179,31 @@ class CEPApplication(tk.Frame):
     def update_exercise_settings_widgets(self): # pylint: disable=invalid-name
         """(Re)create exercise settings widgets.
         """
-        for widget in self.e_settings_f.winfo_children():
+        for widget in self.e_settings_f1.winfo_children():
+            widget.destroy()
+        for widget in self.e_settings_f2.winfo_children():
             widget.destroy()
 
-        label = tk.Label(self.e_settings_f, text="Next exercise settings: ")
-        label.pack(side=tk.LEFT)
-        label = tk.Label(self.e_settings_f, text="Tempo:")
+        label = tk.Label(self.e_settings_f1, text="Tempo:")
         label.pack(side=tk.LEFT)
 
         if not self.tempo_v:
-            self.tempo_v = tk.IntVar(self.e_settings_f)
+            self.tempo_v = tk.IntVar(self.e_settings_f1)
             if self.exercise:
                 self.tempo_v.set(self.exercise.tempo)
             else:
                 self.tempo_v.set(DEFAULT_TEMPO)
 
-        self.tempo_o = tk.OptionMenu(self.e_settings_f,
+        self.tempo_o = tk.OptionMenu(self.e_settings_f1,
                                      self.tempo_v,
                                      *range(40, 210, 10))
         self.tempo_o.pack(side=tk.LEFT)
 
-        label = tk.Label(self.e_settings_f, text="Scale:")
+        label = tk.Label(self.e_settings_f1, text="Scale:")
         label.pack(side=tk.LEFT)
 
         if not self.scale_mode_v:
-            self.scale_mode_v = tk.StringVar(self.e_settings_f)
+            self.scale_mode_v = tk.StringVar(self.e_settings_f1)
             if self.exercise:
                 self.scale_mode_v.set(self.exercise.mode)
             else:
@@ -201,39 +211,80 @@ class CEPApplication(tk.Frame):
             self.scale_mode_v.trace("w", self.mode_changed)
 
         if not self.scale_root_v:
-            self.scale_root_v = tk.StringVar(self.e_settings_f)
+            self.scale_root_v = tk.StringVar(self.e_settings_f1)
             if self.exercise:
                 self.scale_root_v.set(self.exercise.root)
             else:
                 self.scale_root_v.set("<random>")
 
         options = ["<random>"] + list(SCALES[self.scale_mode_v.get()])
-        self.scale_root_o = tk.OptionMenu(self.e_settings_f,
+        self.scale_root_o = tk.OptionMenu(self.e_settings_f1,
                                           self.scale_root_v,
                                           *options)
         self.scale_root_o.pack(side=tk.LEFT)
 
         options = list(SCALES)
-        self.scale_mode_o = tk.OptionMenu(self.e_settings_f,
+        self.scale_mode_o = tk.OptionMenu(self.e_settings_f1,
                                           self.scale_mode_v,
                                           *options)
         self.scale_mode_o.pack(side=tk.LEFT)
 
-        label = tk.Label(self.e_settings_f, text="Harmonization:")
+        label = tk.Label(self.e_settings_f1, text="Harmonization:")
         label.pack(side=tk.LEFT)
 
         if not self.harmonization_v:
-            self.harmonization_v = tk.StringVar(self.e_settings_f)
+            self.harmonization_v = tk.StringVar(self.e_settings_f1)
             if self.exercise:
                 self.harmonization_v.set(self.exercise.harmonization)
             else:
                 self.harmonization_v.set("triads")
 
         options = list(HARMONIZATION)
-        self.harmonization_o = tk.OptionMenu(self.e_settings_f,
+        self.harmonization_o = tk.OptionMenu(self.e_settings_f1,
                                              self.harmonization_v,
                                              *options)
         self.harmonization_o.pack(side=tk.LEFT)
+
+        label = tk.Label(self.e_settings_f2, text="Progression:")
+        label.pack(side=tk.LEFT)
+
+        if not self.progression_v:
+            self.progression_v = tk.StringVar(self.e_settings_f2)
+            if self.exercise:
+                self.progression_v.set(self.exercise.root)
+            else:
+                self.progression_v.set("<random>")
+            self.progression_v.trace("w", self.progression_changed)
+
+        options = ["<random>"] + get_progressions()
+        self.progression_o = tk.OptionMenu(self.e_settings_f2,
+                                           self.progression_v,
+                                           *options)
+        self.progression_o.pack(side=tk.LEFT)
+
+        label = tk.Label(self.e_settings_f2, text="Exercise length:")
+        label.pack(side=tk.LEFT)
+
+        progression = self.progression_v.get()
+        if self.exercise:
+            length = self.exercise.length
+        else:
+            length = DEFAULT_LENGTH
+
+        if progression == "<random>":
+            options = ["{} bars".format(l) for l in range(5, 50, 5)]
+        else:
+            length, options = progression_length(progression, length, 60)
+            options = ["{} bars".format(l) for l in options]
+
+        if not self.length_v:
+            self.length_v = tk.StringVar(self.e_settings_f2)
+        self.length_v.set("{} bars".format(length))
+
+        self.length_o = tk.OptionMenu(self.e_settings_f2,
+                                      self.length_v,
+                                      *options)
+        self.length_o.pack(side=tk.LEFT)
 
     def update_player_settings_widgets(self):
         """(Re)create player settings widgets.
@@ -304,6 +355,10 @@ class CEPApplication(tk.Frame):
             mode = self.scale_mode_v.get()
             root = normalize_scale_root(root, mode)
             self.scale_root_v.set(root)
+        self.update_exercise_settings_widgets()
+
+    def progression_changed(self, *args_):
+        """Progression selection widget change callback."""
         self.update_exercise_settings_widgets()
 
     def draw_canvas(self):
@@ -470,10 +525,22 @@ class CEPApplication(tk.Frame):
             harmonization = self.harmonization_v.get()
         else:
             harmonization = "triads"
+        if self.length_v:
+            length = int(self.length_v.get().split(" ", 1)[0])
+        else:
+            length = DEFAULT_LENGTH
+        if self.progression_v:
+            progression = self.progression_v.get()
+            if progression == "<random>":
+                progression = None
+        else:
+            progression = None
         self.exercise = Exercise(tempo=tempo,
                                  root=root,
                                  mode=mode,
-                                 harmonization=harmonization)
+                                 harmonization=harmonization,
+                                 length=length,
+                                 progression=progression)
         self.tempo_v.set(self.exercise.tempo)
         self.start_time = None
         self.end_time = None
