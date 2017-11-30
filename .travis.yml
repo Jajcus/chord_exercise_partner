@@ -6,7 +6,7 @@ before_install:
 - sudo apt-get update -q
 - sudo apt-get install libasound2-dev -y
 install:
-- pip install setuptools python-rtmidi cx_Freeze==6.0b1 --upgrade
+- pip install setuptools python-rtmidi --upgrade
 - if [ "$TRAVIS_PYTHON_VERSION" = "3.6" ] ; then pip install cx_Freeze==6.0b1 --upgrade ; fi
 script:
 - utils/check_version.py
