@@ -7,13 +7,16 @@ before_install:
 - sudo apt-get install libasound2-dev -y
 install:
 - pip install setuptools python-rtmidi cx_Freeze==6.0b1 --upgrade
+- if [ "$TRAVIS_PYTHON_VERSION" = "3.6" ] ; then pip install cx_Freeze==6.0b1 --upgrade ; fi
 script:
 - utils/check_version.py
 - python setup.py build test
 - python setup.py sdist bdist_wheel
 - export BUILD_VER=${TRAVIS_TAG:-b${TRAVIS_BUILD_NUMBER}}
-- python setup.py build_exe --build-exe dist/chord_exercise_partner-linux-x64-${BUILD_VER}
-- cd dist ; tar czvf chord_exercise_partner-linux-x64-${BUILD_VER}.tar.gz chord_exercise_partner-linux-x64-${BUILD_VER}; cd ..
+- if [ "$TRAVIS_PYTHON_VERSION" = "3.6" ] ; then
+  python setup.py build_exe --build-exe dist/chord_exercise_partner-linux-x64-${BUILD_VER} ;
+  cd dist ; tar czvf chord_exercise_partner-linux-x64-${BUILD_VER}.tar.gz chord_exercise_partner-linux-x64-${BUILD_VER}; cd .. ;
+  fi
 deploy:
   provider: releases
   api_key:
