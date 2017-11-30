@@ -29,7 +29,7 @@ artifacts:
 - path: dist\jajcus.chord_exercise_partner-*.whl
   name: wheel
 deploy:
-  description: '$(appveyor_build_version) release'
+  description: '$(appveyor_repo_tag_name) release'
   provider: GitHub
   auth_token:
     secure: Zx/t/QC8IU3f1wHGwhnuDKHhBOvab3dB4TKP/rr4v4pQ11g6JGIvmpXj3nx9tIt3

@@ -24,6 +24,8 @@ deploy:
   file_glob: true
   file: dist/chord_exercise_partner-linux-*.tar.gz
   draft: true
+  tag_name: ${TRAVIS_TAG}
+  name: ${TRAVIS_TAG}
   skip_cleanup: true
   on:
     repo: Jajcus/chord_exercise_partner
