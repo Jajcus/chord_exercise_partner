@@ -18,7 +18,7 @@ if "build_exe" in sys.argv:
 
 setup(
     name="jajcus.chord_exercise_partner",
-    version="0.4",
+    version="0.5",
     packages=["jajcus.chord_exercise_partner"],
     package_dir={'jajcus': ''},
     entry_points={
