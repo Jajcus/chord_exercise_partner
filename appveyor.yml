@@ -18,9 +18,14 @@ build_script:
 
     %PYTHON% -m chord_exercise_partner.timing
 
+    IF %PYTHON_VERSION% == 3.6 XCOPY /y C:\Python36\DLLs\tcl86t.dll
+
+    IF %PYTHON_VERSION% == 3.6 XCOPY /y C:\Python36\DLLs\tk86t.dll
+
+    IF %PYTHON_VERSION% == 3.6 XCOPY /y /E /i C:\Python36\tcl lib
+
     IF %PYTHON_VERSION% == 3.6 %PYTHON% -m nsist installer.cfg
 
-    IF %PYTHON_VERSION% == 3.6 %PYTHON% setup.py bdist_msi
 artifacts:
 - path: build\nsis\chord_exercise_partner-*.exe
   name: exe
