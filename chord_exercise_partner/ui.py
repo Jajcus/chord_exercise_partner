@@ -292,6 +292,12 @@ class CEPApplication(tk.Frame):
         Some of the OptionMenu widgets needs rebuilding due to option
         set depending on other settings and available resources.
         """
+
+        if self.latency_s:
+            latency = self.latency_s.get()
+        else:
+            latency = 0
+
         for widget in self.p_settings_f.winfo_children():
             widget.destroy()
 
@@ -335,6 +341,8 @@ class CEPApplication(tk.Frame):
                                       to=500.0,
                                       resolution=1,
                                       orient=tk.HORIZONTAL)
+            if latency:
+                self.latency_s.set(latency)
             self.latency_s.pack(side=tk.LEFT)
 
     def midi_port_changed(self, *args_):
