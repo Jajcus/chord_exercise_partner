@@ -16,6 +16,16 @@ if "build_exe" in sys.argv:
     except ImportError:
         pass
 
+if sys.platform == 'darwin':
+    extra["setup_requires"] = ['py2app']
+    extra["app"] = ["chord_exercise_partner.py"]
+    plist = {
+            "CFBundleIdentifier": "net.jajcus.chord_exercise_partner",
+            "CFBundleName": "Chord Exercise Partner",
+            "CFBundleDisplayName": "Chord Exercise Partner",
+            }
+    extra["options"] = {"py2app": {"plist": plist}}
+
 setup(
     name="jajcus.chord_exercise_partner",
     version="0.6",

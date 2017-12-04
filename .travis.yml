@@ -1,13 +1,23 @@
 language: python
 python:
-- '3.4'
 - '3.6'
+- '3.4'
+matrix:
+  include:
+    - language: generic
+      os: osx
+      before_install:
+        - brew update
+        - brew install python3
+        - virtualenv env -p python3
+        - source env/bin/activate
 before_install:
-- sudo apt-get update -q
-- sudo apt-get install libasound2-dev -y
+- if [ "$TRAVIS_OS_NAME" = "linux" ] ; then sudo apt-get update -q ; fi
+- if [ "$TRAVIS_OS_NAME" = "linux" ] ; then sudo apt-get install libasound2-dev -y ; fi
 install:
 - pip install setuptools python-rtmidi --upgrade
 - if [ "$TRAVIS_PYTHON_VERSION" = "3.6" ] ; then pip install cx_Freeze==6.0b1 --upgrade ; fi
+- if [ "$TRAVIS_OS_NAME" = "osx" ] ; then pip install py2app ; fi
 script:
 - utils/check_version.py
 - python setup.py build test
@@ -16,6 +26,9 @@ script:
 - if [ "$TRAVIS_PYTHON_VERSION" = "3.6" ] ; then
   python setup.py build_exe --build-exe dist/chord_exercise_partner-linux-x64-${BUILD_VER} ;
   cd dist ; tar czvf chord_exercise_partner-linux-x64-${BUILD_VER}.tar.gz chord_exercise_partner-linux-x64-${BUILD_VER}; cd .. ;
+  fi
+- if [ "$TRAVIS_OS_NAME" = "osx" ]; then
+  python setup.py py2app ;
   fi
 deploy:
   provider: releases
