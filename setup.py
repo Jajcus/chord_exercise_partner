@@ -18,7 +18,7 @@ if "build_exe" in sys.argv:
 
 if sys.platform == 'darwin':
     extra["setup_requires"] = ['py2app']
-    extra["app"] = "chord_exercise_partner.py"
+    extra["app"] = ["chord_exercise_partner.py"]
 
 setup(
     name="jajcus.chord_exercise_partner",
