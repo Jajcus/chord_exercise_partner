@@ -27,7 +27,7 @@ Windows binary
 The exe file provided in the GitHub release will install Chord Exercise Partner
 on Windows.
 
-`Visual C++ Redistributable for Visual Studio 2015`_ (x86) may be needed to
-start the program.
+`Visual C++ Redistributable for Visual Studio 2015`_ (x86, the 32-bit version)
+is also needed for the backing track player.
 
 .. _`Visual C++ Redistributable for Visual Studio 2015`: https://www.microsoft.com/en-us/download/details.aspx?id=48145
