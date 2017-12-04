@@ -16,6 +16,10 @@ if "build_exe" in sys.argv:
     except ImportError:
         pass
 
+if sys.platform == 'darwin':
+    extra["setup_requires"] = ['py2app']
+    extra["app"] = "chord_exercise_partner.py"
+
 setup(
     name="jajcus.chord_exercise_partner",
     version="0.6",
