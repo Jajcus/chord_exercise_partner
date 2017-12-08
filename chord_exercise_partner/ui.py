@@ -5,7 +5,7 @@
 import time
 import tkinter as tk
 
-from .exercise import DEFAULT_LENGTH, DEFAULT_TEMPO, LEAD_IN, Exercise
+from .exercise import DEFAULT_LENGTH, LEAD_IN, Exercise
 from .notes import HARMONIZATION, SCALES, normalize_scale_root
 from .player import CompPlayer, MIDINotAvailable
 from .progressions import get_progression, get_progressions, progression_length
@@ -40,6 +40,10 @@ BAR_OFFSET = BEAT_OFFSET - BEAT_LENGTH / 2
 
 CHORD_NAME_DELAY = 2 # beats
 
+MIN_TEMPO = 20
+MAX_TEMPO = 200
+DEFAULT_TEMPO = 60
+
 class CEPApplication(tk.Frame):
     """Application window."""
     # pylint: disable=too-many-ancestors,too-many-instance-attributes
@@ -50,9 +54,10 @@ class CEPApplication(tk.Frame):
         self.bar = None
         self.beat = None
         self.exercise = None
+        self.tempo = DEFAULT_TEMPO
+        self.paused_at = None
 
-        self.tempo_v = None
-        self.tempo_o = None
+        self.tempo_s = None
         self.scale_root_v = None
         self.scale_root_o = None
         self.scale_mode_v = None
@@ -81,6 +86,7 @@ class CEPApplication(tk.Frame):
         self.draw_markers()
 
         self.new_exercise()
+        self.focus_set()
 
     def create_widgets(self):
         """Create basic window layout and the fixed widgets."""
@@ -93,11 +99,6 @@ class CEPApplication(tk.Frame):
         label.grid(row=0, column=0, columnspan=2, sticky=tk.E)
         self.scale_l = tk.Label(labels_f, font=SCALE_NAME_FONT, padx=5)
         self.scale_l.grid(row=0, column=2, columnspan=2, sticky=tk.W)
-
-        label = tk.Label(labels_f, text="Tempo:", font=SCALE_LABEL_FONT, padx=5)
-        label.grid(row=1, column=0, columnspan=2, sticky=tk.E)
-        self.tempo_l = tk.Label(labels_f, font=SCALE_NAME_FONT, padx=5)
-        self.tempo_l.grid(row=1, column=2, columnspan=2, sticky=tk.W)
 
         label = tk.Label(labels_f, text="Current chord:", font=SCALE_LABEL_FONT, padx=5)
         label.grid(row=2, column=0, rowspan=2, sticky=tk.E)
@@ -143,27 +144,45 @@ class CEPApplication(tk.Frame):
 
         self.canvases_f.pack(fill=tk.X, expand=1, pady=0, ipady=0)
 
+        tempo_f = tk.Frame(self)
+        tempo_f.pack(expand=True, fill=tk.X)
+        label = tk.Label(tempo_f, text="Tempo:")
+        label.pack(side=tk.LEFT)
+        self.tempo_s = tk.Scale(tempo_f,
+                                from_=20.0,
+                                to=200.0,
+                                resolution=10,
+                                orient=tk.HORIZONTAL)
+        self.tempo_s.set(self.tempo)
+        self.tempo_s["command"] = self.tempo_changed
+        self.tempo_s.pack(side=tk.LEFT, expand=True, fill=tk.X)
+
         self.p_settings_f = tk.Frame(self)
         self.p_settings_f.pack()
 
-        self.buttons_f = tk.Frame(self)
-        self.buttons_f.pack()
+        buttons_f = tk.Frame(self)
+        buttons_f.pack()
 
-        self.start_b = tk.Button(self.buttons_f)
-        self.start_b["text"] = "Start"
-        self.start_b["command"] = self.start
-        self.start_b["state"] = tk.NORMAL
-        self.start_b.pack(side=tk.LEFT, padx=5, pady=5)
+        self.restart_b = tk.Button(buttons_f)
+        self.restart_b["text"] = "Restart"
+        self.restart_b["command"] = self.restart
+        self.restart_b["state"] = tk.NORMAL
+        self.restart_b.pack(side=tk.LEFT, padx=5, pady=5)
+        self.bind("r", self.restart)
 
-        self.new_b = tk.Button(self.buttons_f)
-        self.new_b["text"] = "New Exercise"
-        self.new_b["command"] = self.new_exercise
-        self.new_b.pack(side=tk.LEFT, padx=5, pady=5)
+        self.play_b = tk.Button(buttons_f)
+        self.play_b["text"] = "Play"
+        self.play_b["command"] = self.play_pause
+        self.play_b["state"] = tk.NORMAL
+        self.play_b.pack(side=tk.LEFT, padx=5, pady=5)
+        self.bind("<space>", self.play_pause)
 
-        self.quit_b = tk.Button(self.buttons_f)
-        self.quit_b["text"] = "Quit"
-        self.quit_b["command"] = self.master.destroy
-        self.quit_b.pack(side=tk.LEFT, padx=5, pady=5)
+        separator = tk.Frame(self,
+                             borderwidth=1,
+                             height=3,
+                             relief=tk.SUNKEN)
+        separator.pack(expand=True, fill=tk.X)
+
 
         label = tk.Label(self, text="Next exercise settings: ")
         label.pack()
@@ -172,6 +191,21 @@ class CEPApplication(tk.Frame):
         self.e_settings_f1.pack()
         self.e_settings_f2 = tk.Frame(self)
         self.e_settings_f2.pack()
+
+        buttons_f = tk.Frame(self)
+        buttons_f.pack()
+
+        self.new_b = tk.Button(buttons_f)
+        self.new_b["text"] = "New Exercise"
+        self.new_b["command"] = self.new_exercise
+        self.new_b.pack(side=tk.LEFT, padx=5, pady=5)
+        self.bind("n", self.new_exercise)
+
+        self.quit_b = tk.Button(buttons_f)
+        self.quit_b["text"] = "Quit"
+        self.quit_b["command"] = self.master.destroy
+        self.quit_b.pack(side=tk.LEFT, padx=5, pady=5)
+        self.bind("<Control-Key-q>", lambda event: self.master.destroy())
 
         self.update_exercise_settings_widgets()
         self.update_player_settings_widgets()
@@ -183,21 +217,6 @@ class CEPApplication(tk.Frame):
             widget.destroy()
         for widget in self.e_settings_f2.winfo_children():
             widget.destroy()
-
-        label = tk.Label(self.e_settings_f1, text="Tempo:")
-        label.pack(side=tk.LEFT)
-
-        if not self.tempo_v:
-            self.tempo_v = tk.IntVar(self.e_settings_f1)
-            if self.exercise:
-                self.tempo_v.set(self.exercise.tempo)
-            else:
-                self.tempo_v.set(DEFAULT_TEMPO)
-
-        self.tempo_o = tk.OptionMenu(self.e_settings_f1,
-                                     self.tempo_v,
-                                     *range(40, 210, 10))
-        self.tempo_o.pack(side=tk.LEFT)
 
         label = tk.Label(self.e_settings_f1, text="Scale:")
         label.pack(side=tk.LEFT)
@@ -356,6 +375,20 @@ class CEPApplication(tk.Frame):
         if self.player:
             self.player.change_track(self.track_v.get())
 
+    def tempo_changed(self, *args_):
+        """Tempo change callback."""
+        tempo = self.tempo_s.get()
+        if self.paused_at:
+            self.tempo = tempo
+            return
+        if self.start_time:
+            now = time.time()
+            rel_time = (now - self.start_time) * self.tempo
+            self.start_time = now - rel_time / tempo
+            self.tempo = tempo
+            if self.player:
+                self.player.change_tempo(tempo, self.start_time)
+
     def mode_changed(self, *args_):
         """Scale mode selection widget change callback."""
         root = self.scale_root_v.get()
@@ -435,13 +468,38 @@ class CEPApplication(tk.Frame):
         self.top_canvas.create_line(x0, h - y0, x1, h - y2)
         self.top_canvas.create_line(x0, h - y0, x2, h - y2)
 
+    def restart(self, _event=None):
+        """Restart the exercise."""
+        self.start()
+
+    def play_pause(self, _event=None):
+        """Pause or continue the exercise."""
+        if not self.start_time:
+            print("Playing from the beginning")
+            return self.start()
+        tempo = self.tempo_s.get()
+        now = time.time()
+        if self.paused_at is not None:
+            self.start_time = now - self.paused_at / tempo
+            print("Unpausing")
+            self.paused_at = None
+            track = self.track_v.get()
+            self.player.start(self.exercise, self.start_time, track, tempo)
+            self.play_b["text"] = "Pause"
+            self.canvas.after(10, self.progress)
+        else:
+            self.player.stop()
+            self.paused_at = (now - self.start_time) * tempo
+            self.play_b["text"] = "Play"
+            print("Paused at {:.3f}".format(self.paused_at))
+
     def start(self):
         """Start the exercise."""
 
         if self.player:
             self.player.stop()
 
-        self.start_b["text"] = "Restart"
+        self.play_b["text"] = "Pause"
         self.chord_d_l["text"] = "–"
         self.chord_n_l["text"] = "–"
         self.n_chord_d_l["text"] = "–"
@@ -452,11 +510,17 @@ class CEPApplication(tk.Frame):
         song_length = (LEAD_IN + self.exercise.length) * self.exercise.bar_duration
         print("Song length: {}s".format(song_length))
 
+        if self.latency_s:
+            latency = self.latency_s.get() / 1000.0
+        else:
+            latency = 0
+
+        self.paused_at = None
+        self.start_time = time.time() + latency + 0.001
         if self.player:
             track = self.track_v.get()
-            self.start_time = self.player.start(self.exercise, track)
-        else:
-            self.start_time = time.time()
+            tempo = self.tempo_s.get()
+            self.player.start(self.exercise, self.start_time, track, tempo)
 
         self.end_time = self.start_time + song_length
         self.progress()
@@ -477,10 +541,16 @@ class CEPApplication(tk.Frame):
             latency = self.latency_s.get() / 1000.0
         else:
             latency = 0
-        pos = now - self.start_time - latency
 
-        if pos < 0:
-            pos = 0
+        tempo = self.tempo_s.get()
+
+        if self.paused_at is not None:
+            pos = self.paused_at - latency * tempo
+        else:
+            pos = now - self.start_time - latency
+            if pos < 0:
+                pos = 0
+            pos *= tempo
 
         bar = int(pos // self.exercise.bar_duration)
         beat = (pos % self.exercise.bar_duration) / self.exercise.beat_duration
@@ -508,17 +578,13 @@ class CEPApplication(tk.Frame):
 
         if canvas_target != canvas_x:
             self.canvas.xview_scroll(canvas_target - canvas_x, tk.UNITS)
-        if now < self.end_time:
+        if now < self.end_time and not self.paused_at:
             self.canvas.after(10, self.progress)
 
-    def new_exercise(self):
+    def new_exercise(self, _event=None):
         """Generate new exercise."""
         if self.player:
             self.player.stop()
-        if self.tempo_v:
-            tempo = self.tempo_v.get()
-        else:
-            tempo = DEFAULT_TEMPO
         if self.scale_mode_v:
             mode = self.scale_mode_v.get()
         else:
@@ -543,13 +609,11 @@ class CEPApplication(tk.Frame):
                 progression = None
         else:
             progression = None
-        self.exercise = Exercise(tempo=tempo,
-                                 root=root,
+        self.exercise = Exercise(root=root,
                                  mode=mode,
                                  harmonization=harmonization,
                                  length=length,
                                  progression=progression)
-        self.tempo_v.set(self.exercise.tempo)
         self.start_time = None
         self.end_time = None
         self.bar = None
@@ -560,9 +624,8 @@ class CEPApplication(tk.Frame):
         self.n_chord_d_l["text"] = "–"
         self.n_chord_n_l["text"] = "–"
         self.scale_l["text"] = self.exercise.scale_name
-        self.tempo_l["text"] = "{} bpm".format(self.exercise.tempo)
         self.draw_canvas()
-        self.start_b["text"] = "Start"
+        self.play_b["text"] = "Play"
 
 def main():
     """Main entry point."""

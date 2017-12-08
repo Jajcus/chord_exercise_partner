@@ -11,19 +11,16 @@ from .progressions import get_progression
 LEAD_IN = 2 # bars
 DEFAULT_LENGTH = 10 # bars
 
-DEFAULT_TEMPO = 60 # BPM
-
 ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII"]
 
 class Exercise:
     """An exercise – a scale and chord progression to play."""
     # pylint: disable=too-few-public-methods
-    def __init__(self, tempo=DEFAULT_TEMPO, length=DEFAULT_LENGTH,
+    def __init__(self, length=DEFAULT_LENGTH,
                  root=None, mode="major", harmonization="triads",
                  progression=None):
         random.seed()
 
-        self.tempo = tempo
         self.length = length
 
         self.mode = mode
@@ -45,9 +42,9 @@ class Exercise:
         self.scale_name = "{}-{}".format(root, mode)
 
         self.beats_in_bar = 4
-        self.beat_duration = 60.0 / tempo
+        self.beat_duration = 60.0  # 1/bpm units
         self.bar_duration = self.beat_duration * self.beats_in_bar
-        self.whole_note_duration = 60.0 * 4.0 / tempo
+        self.whole_note_duration = 60.0 * 4.0
 
         print("The scale is:", self.scale_name)
 
