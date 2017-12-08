@@ -86,6 +86,7 @@ class CEPApplication(tk.Frame):
         self.draw_markers()
 
         self.new_exercise()
+        self.focus_set()
 
     def create_widgets(self):
         """Create basic window layout and the fixed widgets."""
@@ -167,12 +168,14 @@ class CEPApplication(tk.Frame):
         self.restart_b["command"] = self.restart
         self.restart_b["state"] = tk.NORMAL
         self.restart_b.pack(side=tk.LEFT, padx=5, pady=5)
+        self.bind("r", self.restart)
 
         self.play_b = tk.Button(buttons_f)
         self.play_b["text"] = "Play"
         self.play_b["command"] = self.play_pause
         self.play_b["state"] = tk.NORMAL
         self.play_b.pack(side=tk.LEFT, padx=5, pady=5)
+        self.bind("<space>", self.play_pause)
 
         separator = tk.Frame(self,
                              borderwidth=1,
@@ -196,11 +199,13 @@ class CEPApplication(tk.Frame):
         self.new_b["text"] = "New Exercise"
         self.new_b["command"] = self.new_exercise
         self.new_b.pack(side=tk.LEFT, padx=5, pady=5)
+        self.bind("n", self.new_exercise)
 
         self.quit_b = tk.Button(buttons_f)
         self.quit_b["text"] = "Quit"
         self.quit_b["command"] = self.master.destroy
         self.quit_b.pack(side=tk.LEFT, padx=5, pady=5)
+        self.bind("<Control-Key-q>", lambda event: self.master.destroy())
 
         self.update_exercise_settings_widgets()
         self.update_player_settings_widgets()
@@ -463,11 +468,11 @@ class CEPApplication(tk.Frame):
         self.top_canvas.create_line(x0, h - y0, x1, h - y2)
         self.top_canvas.create_line(x0, h - y0, x2, h - y2)
 
-    def restart(self):
+    def restart(self, _event=None):
         """Restart the exercise."""
         self.start()
 
-    def play_pause(self):
+    def play_pause(self, _event=None):
         """Pause or continue the exercise."""
         if not self.start_time:
             print("Playing from the beginning")
@@ -509,6 +514,8 @@ class CEPApplication(tk.Frame):
             latency = self.latency_s.get() / 1000.0
         else:
             latency = 0
+
+        self.paused_at = None
         self.start_time = time.time() + latency + 0.001
         if self.player:
             track = self.track_v.get()
@@ -574,7 +581,7 @@ class CEPApplication(tk.Frame):
         if now < self.end_time and not self.paused_at:
             self.canvas.after(10, self.progress)
 
-    def new_exercise(self):
+    def new_exercise(self, _event=None):
         """Generate new exercise."""
         if self.player:
             self.player.stop()
