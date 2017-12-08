@@ -166,8 +166,8 @@ class CompPlayer:
         with self.lock:
             self.tempo = tempo
             if start_time and self.start_time:
-                self.p_start_time += start_time - self.start_time
                 self.start_time = start_time
+                self.p_start_time = None
             self.update = True
             self.cond.notify()
 
@@ -200,18 +200,18 @@ class CompPlayer:
                         events.append((off_time, note_off(channel, note)))
         return sorted(events)
 
-    def start(self, exercise, main_track, tempo):
+    def start(self, exercise, start_time, main_track, tempo):
         """Start the player, return the exact start time."""
         with self.lock:
             self.exercise = exercise
-            self.start_time = None
+            self.start_time = start_time
+            self.p_start_time = None
             self.track_name = main_track
             self.tempo = tempo
             self.update = True
             self.cond.notify()
-            while not self.start_time:
+            while self.update:
                 self.cond.wait()
-        return self.start_time
 
     def run(self):
         """The main loop of the player."""
@@ -220,12 +220,13 @@ class CompPlayer:
                 while not self.quit:
                     while not self.exercise:
                         self.cond.wait(0.1)
-                    self.start_time = time.time()
-                    self.p_start_time = time.perf_counter()
                     self.cond.notify()
                     events = []
                     while not self.quit and self.start_time and self.exercise:
                         if self.update:
+                            now = time.time()
+                            p_now = time.perf_counter()
+                            self.p_start_time = p_now + self.start_time - now
                             for message in MIDI_INIT:
                                 self.port.send_message(message)
                             events = self.prepare_track(LEAD_TRACK,

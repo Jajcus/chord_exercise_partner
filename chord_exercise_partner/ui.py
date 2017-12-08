@@ -55,6 +55,7 @@ class CEPApplication(tk.Frame):
         self.beat = None
         self.exercise = None
         self.tempo = DEFAULT_TEMPO
+        self.paused_at = None
 
         self.tempo_s = None
         self.scale_root_v = None
@@ -158,24 +159,27 @@ class CEPApplication(tk.Frame):
         self.p_settings_f = tk.Frame(self)
         self.p_settings_f.pack()
 
-        self.buttons_f = tk.Frame(self)
-        self.buttons_f.pack()
+        buttons_f = tk.Frame(self)
+        buttons_f.pack()
 
-        self.start_b = tk.Button(self.buttons_f)
-        self.start_b["text"] = "Start"
-        self.start_b["command"] = self.start
-        self.start_b["state"] = tk.NORMAL
-        self.start_b.pack(side=tk.LEFT, padx=5, pady=5)
+        self.restart_b = tk.Button(buttons_f)
+        self.restart_b["text"] = "Restart"
+        self.restart_b["command"] = self.restart
+        self.restart_b["state"] = tk.NORMAL
+        self.restart_b.pack(side=tk.LEFT, padx=5, pady=5)
 
-        self.new_b = tk.Button(self.buttons_f)
-        self.new_b["text"] = "New Exercise"
-        self.new_b["command"] = self.new_exercise
-        self.new_b.pack(side=tk.LEFT, padx=5, pady=5)
+        self.play_b = tk.Button(buttons_f)
+        self.play_b["text"] = "Play"
+        self.play_b["command"] = self.play_pause
+        self.play_b["state"] = tk.NORMAL
+        self.play_b.pack(side=tk.LEFT, padx=5, pady=5)
 
-        self.quit_b = tk.Button(self.buttons_f)
-        self.quit_b["text"] = "Quit"
-        self.quit_b["command"] = self.master.destroy
-        self.quit_b.pack(side=tk.LEFT, padx=5, pady=5)
+        separator = tk.Frame(self,
+                             borderwidth=1,
+                             height=3,
+                             relief=tk.SUNKEN)
+        separator.pack(expand=True, fill=tk.X)
+
 
         label = tk.Label(self, text="Next exercise settings: ")
         label.pack()
@@ -184,6 +188,19 @@ class CEPApplication(tk.Frame):
         self.e_settings_f1.pack()
         self.e_settings_f2 = tk.Frame(self)
         self.e_settings_f2.pack()
+
+        buttons_f = tk.Frame(self)
+        buttons_f.pack()
+
+        self.new_b = tk.Button(buttons_f)
+        self.new_b["text"] = "New Exercise"
+        self.new_b["command"] = self.new_exercise
+        self.new_b.pack(side=tk.LEFT, padx=5, pady=5)
+
+        self.quit_b = tk.Button(buttons_f)
+        self.quit_b["text"] = "Quit"
+        self.quit_b["command"] = self.master.destroy
+        self.quit_b.pack(side=tk.LEFT, padx=5, pady=5)
 
         self.update_exercise_settings_widgets()
         self.update_player_settings_widgets()
@@ -356,13 +373,16 @@ class CEPApplication(tk.Frame):
     def tempo_changed(self, *args_):
         """Tempo change callback."""
         tempo = self.tempo_s.get()
+        if self.paused_at:
+            self.tempo = tempo
+            return
         if self.start_time:
             now = time.time()
             rel_time = (now - self.start_time) * self.tempo
             self.start_time = now - rel_time / tempo
             self.tempo = tempo
-        if self.player:
-            self.player.change_tempo(tempo, self.start_time)
+            if self.player:
+                self.player.change_tempo(tempo, self.start_time)
 
     def mode_changed(self, *args_):
         """Scale mode selection widget change callback."""
@@ -443,13 +463,38 @@ class CEPApplication(tk.Frame):
         self.top_canvas.create_line(x0, h - y0, x1, h - y2)
         self.top_canvas.create_line(x0, h - y0, x2, h - y2)
 
+    def restart(self):
+        """Restart the exercise."""
+        self.start()
+
+    def play_pause(self):
+        """Pause or continue the exercise."""
+        if not self.start_time:
+            print("Playing from the beginning")
+            return self.start()
+        tempo = self.tempo_s.get()
+        now = time.time()
+        if self.paused_at is not None:
+            self.start_time = now - self.paused_at / tempo
+            print("Unpausing")
+            self.paused_at = None
+            track = self.track_v.get()
+            self.player.start(self.exercise, self.start_time, track, tempo)
+            self.play_b["text"] = "Pause"
+            self.canvas.after(10, self.progress)
+        else:
+            self.player.stop()
+            self.paused_at = (now - self.start_time) * tempo
+            self.play_b["text"] = "Play"
+            print("Paused at {:.3f}".format(self.paused_at))
+
     def start(self):
         """Start the exercise."""
 
         if self.player:
             self.player.stop()
 
-        self.start_b["text"] = "Restart"
+        self.play_b["text"] = "Pause"
         self.chord_d_l["text"] = "–"
         self.chord_n_l["text"] = "–"
         self.n_chord_d_l["text"] = "–"
@@ -460,12 +505,15 @@ class CEPApplication(tk.Frame):
         song_length = (LEAD_IN + self.exercise.length) * self.exercise.bar_duration
         print("Song length: {}s".format(song_length))
 
+        if self.latency_s:
+            latency = self.latency_s.get() / 1000.0
+        else:
+            latency = 0
+        self.start_time = time.time() + latency + 0.001
         if self.player:
             track = self.track_v.get()
             tempo = self.tempo_s.get()
-            self.start_time = self.player.start(self.exercise, track, tempo)
-        else:
-            self.start_time = time.time()
+            self.player.start(self.exercise, self.start_time, track, tempo)
 
         self.end_time = self.start_time + song_length
         self.progress()
@@ -486,14 +534,19 @@ class CEPApplication(tk.Frame):
             latency = self.latency_s.get() / 1000.0
         else:
             latency = 0
-        pos = now - self.start_time - latency
-
-        if pos < 0:
-            pos = 0
 
         tempo = self.tempo_s.get()
-        bar = int(pos * tempo // self.exercise.bar_duration)
-        beat = (pos * tempo % self.exercise.bar_duration) / self.exercise.beat_duration
+
+        if self.paused_at is not None:
+            pos = self.paused_at - latency * tempo
+        else:
+            pos = now - self.start_time - latency
+            if pos < 0:
+                pos = 0
+            pos *= tempo
+
+        bar = int(pos // self.exercise.bar_duration)
+        beat = (pos % self.exercise.bar_duration) / self.exercise.beat_duration
 
         if bar != self.bar and bar < total_bars:
             self.bar = bar
@@ -518,7 +571,7 @@ class CEPApplication(tk.Frame):
 
         if canvas_target != canvas_x:
             self.canvas.xview_scroll(canvas_target - canvas_x, tk.UNITS)
-        if now < self.end_time:
+        if now < self.end_time and not self.paused_at:
             self.canvas.after(10, self.progress)
 
     def new_exercise(self):
@@ -565,7 +618,7 @@ class CEPApplication(tk.Frame):
         self.n_chord_n_l["text"] = "–"
         self.scale_l["text"] = self.exercise.scale_name
         self.draw_canvas()
-        self.start_b["text"] = "Start"
+        self.play_b["text"] = "Play"
 
 def main():
     """Main entry point."""
