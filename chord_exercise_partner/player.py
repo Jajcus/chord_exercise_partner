@@ -48,6 +48,8 @@ class CompPlayer:
         self.available_ports = []
         self.thread = None
         self.track_name = None
+        self.tempo = None
+        self.update = False
 
         if not rtmidi:
             raise MIDINotAvailable("rtmidi module not available: {}"
@@ -156,6 +158,17 @@ class CompPlayer:
         """Change current backing track."""
         with self.lock:
             self.track_name = track_name
+            self.update = True
+            self.cond.notify()
+
+    def change_tempo(self, tempo, start_time=None):
+        """Change current tempo and position."""
+        with self.lock:
+            self.tempo = tempo
+            if start_time and self.start_time:
+                self.p_start_time += start_time - self.start_time
+                self.start_time = start_time
+            self.update = True
             self.cond.notify()
 
     def prepare_track(self, pattern, bars=1, start=0):
@@ -165,8 +178,8 @@ class CompPlayer:
         """
         pattern_bars = len(pattern)
         events = []
-        bar_d = self.exercise.bar_duration
-        whn_d = self.exercise.whole_note_duration
+        bar_d = self.exercise.bar_duration / self.tempo
+        whn_d = self.exercise.whole_note_duration / self.tempo
         for bar in range(bars):
             song_bar = start + bar
             ex_bar = song_bar - LEAD_IN
@@ -187,12 +200,14 @@ class CompPlayer:
                         events.append((off_time, note_off(channel, note)))
         return sorted(events)
 
-    def start(self, exercise, main_track):
+    def start(self, exercise, main_track, tempo):
         """Start the player, return the exact start time."""
         with self.lock:
             self.exercise = exercise
             self.start_time = None
             self.track_name = main_track
+            self.tempo = tempo
+            self.update = True
             self.cond.notify()
             while not self.start_time:
                 self.cond.wait()
@@ -210,7 +225,7 @@ class CompPlayer:
                     self.cond.notify()
                     events = []
                     while not self.quit and self.start_time and self.exercise:
-                        if self.track_name:
+                        if self.update:
                             for message in MIDI_INIT:
                                 self.port.send_message(message)
                             events = self.prepare_track(LEAD_TRACK,
@@ -219,7 +234,7 @@ class CompPlayer:
                             events += self.prepare_track(track,
                                                          self.exercise.length,
                                                          LEAD_IN)
-                            self.track_name = None
+                            self.update = False
                         ev_time, message = events[0]
                         now = time.perf_counter()
                         lag = now - ev_time

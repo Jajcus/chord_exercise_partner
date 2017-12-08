@@ -5,7 +5,7 @@
 import time
 import tkinter as tk
 
-from .exercise import DEFAULT_LENGTH, DEFAULT_TEMPO, LEAD_IN, Exercise
+from .exercise import DEFAULT_LENGTH, LEAD_IN, Exercise
 from .notes import HARMONIZATION, SCALES, normalize_scale_root
 from .player import CompPlayer, MIDINotAvailable
 from .progressions import get_progression, get_progressions, progression_length
@@ -40,6 +40,10 @@ BAR_OFFSET = BEAT_OFFSET - BEAT_LENGTH / 2
 
 CHORD_NAME_DELAY = 2 # beats
 
+MIN_TEMPO = 20
+MAX_TEMPO = 200
+DEFAULT_TEMPO = 60
+
 class CEPApplication(tk.Frame):
     """Application window."""
     # pylint: disable=too-many-ancestors,too-many-instance-attributes
@@ -50,9 +54,9 @@ class CEPApplication(tk.Frame):
         self.bar = None
         self.beat = None
         self.exercise = None
+        self.tempo = DEFAULT_TEMPO
 
-        self.tempo_v = None
-        self.tempo_o = None
+        self.tempo_s = None
         self.scale_root_v = None
         self.scale_root_o = None
         self.scale_mode_v = None
@@ -93,11 +97,6 @@ class CEPApplication(tk.Frame):
         label.grid(row=0, column=0, columnspan=2, sticky=tk.E)
         self.scale_l = tk.Label(labels_f, font=SCALE_NAME_FONT, padx=5)
         self.scale_l.grid(row=0, column=2, columnspan=2, sticky=tk.W)
-
-        label = tk.Label(labels_f, text="Tempo:", font=SCALE_LABEL_FONT, padx=5)
-        label.grid(row=1, column=0, columnspan=2, sticky=tk.E)
-        self.tempo_l = tk.Label(labels_f, font=SCALE_NAME_FONT, padx=5)
-        self.tempo_l.grid(row=1, column=2, columnspan=2, sticky=tk.W)
 
         label = tk.Label(labels_f, text="Current chord:", font=SCALE_LABEL_FONT, padx=5)
         label.grid(row=2, column=0, rowspan=2, sticky=tk.E)
@@ -143,6 +142,19 @@ class CEPApplication(tk.Frame):
 
         self.canvases_f.pack(fill=tk.X, expand=1, pady=0, ipady=0)
 
+        tempo_f = tk.Frame(self)
+        tempo_f.pack(expand=True, fill=tk.X)
+        label = tk.Label(tempo_f, text="Tempo:")
+        label.pack(side=tk.LEFT)
+        self.tempo_s = tk.Scale(tempo_f,
+                                from_=20.0,
+                                to=200.0,
+                                resolution=10,
+                                orient=tk.HORIZONTAL)
+        self.tempo_s.set(self.tempo)
+        self.tempo_s["command"] = self.tempo_changed
+        self.tempo_s.pack(side=tk.LEFT, expand=True, fill=tk.X)
+
         self.p_settings_f = tk.Frame(self)
         self.p_settings_f.pack()
 
@@ -183,21 +195,6 @@ class CEPApplication(tk.Frame):
             widget.destroy()
         for widget in self.e_settings_f2.winfo_children():
             widget.destroy()
-
-        label = tk.Label(self.e_settings_f1, text="Tempo:")
-        label.pack(side=tk.LEFT)
-
-        if not self.tempo_v:
-            self.tempo_v = tk.IntVar(self.e_settings_f1)
-            if self.exercise:
-                self.tempo_v.set(self.exercise.tempo)
-            else:
-                self.tempo_v.set(DEFAULT_TEMPO)
-
-        self.tempo_o = tk.OptionMenu(self.e_settings_f1,
-                                     self.tempo_v,
-                                     *range(40, 210, 10))
-        self.tempo_o.pack(side=tk.LEFT)
 
         label = tk.Label(self.e_settings_f1, text="Scale:")
         label.pack(side=tk.LEFT)
@@ -356,6 +353,17 @@ class CEPApplication(tk.Frame):
         if self.player:
             self.player.change_track(self.track_v.get())
 
+    def tempo_changed(self, *args_):
+        """Tempo change callback."""
+        tempo = self.tempo_s.get()
+        if self.start_time:
+            now = time.time()
+            rel_time = (now - self.start_time) * self.tempo
+            self.start_time = now - rel_time / tempo
+            self.tempo = tempo
+        if self.player:
+            self.player.change_tempo(tempo, self.start_time)
+
     def mode_changed(self, *args_):
         """Scale mode selection widget change callback."""
         root = self.scale_root_v.get()
@@ -454,7 +462,8 @@ class CEPApplication(tk.Frame):
 
         if self.player:
             track = self.track_v.get()
-            self.start_time = self.player.start(self.exercise, track)
+            tempo = self.tempo_s.get()
+            self.start_time = self.player.start(self.exercise, track, tempo)
         else:
             self.start_time = time.time()
 
@@ -482,8 +491,9 @@ class CEPApplication(tk.Frame):
         if pos < 0:
             pos = 0
 
-        bar = int(pos // self.exercise.bar_duration)
-        beat = (pos % self.exercise.bar_duration) / self.exercise.beat_duration
+        tempo = self.tempo_s.get()
+        bar = int(pos * tempo // self.exercise.bar_duration)
+        beat = (pos * tempo % self.exercise.bar_duration) / self.exercise.beat_duration
 
         if bar != self.bar and bar < total_bars:
             self.bar = bar
@@ -515,10 +525,6 @@ class CEPApplication(tk.Frame):
         """Generate new exercise."""
         if self.player:
             self.player.stop()
-        if self.tempo_v:
-            tempo = self.tempo_v.get()
-        else:
-            tempo = DEFAULT_TEMPO
         if self.scale_mode_v:
             mode = self.scale_mode_v.get()
         else:
@@ -543,13 +549,11 @@ class CEPApplication(tk.Frame):
                 progression = None
         else:
             progression = None
-        self.exercise = Exercise(tempo=tempo,
-                                 root=root,
+        self.exercise = Exercise(root=root,
                                  mode=mode,
                                  harmonization=harmonization,
                                  length=length,
                                  progression=progression)
-        self.tempo_v.set(self.exercise.tempo)
         self.start_time = None
         self.end_time = None
         self.bar = None
@@ -560,7 +564,6 @@ class CEPApplication(tk.Frame):
         self.n_chord_d_l["text"] = "–"
         self.n_chord_n_l["text"] = "–"
         self.scale_l["text"] = self.exercise.scale_name
-        self.tempo_l["text"] = "{} bpm".format(self.exercise.tempo)
         self.draw_canvas()
         self.start_b["text"] = "Start"
 
