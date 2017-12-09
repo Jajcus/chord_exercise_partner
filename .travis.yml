@@ -23,14 +23,14 @@ script:
 - python setup.py build test
 - python setup.py sdist bdist_wheel
 - export BUILD_VER=${TRAVIS_TAG:-b${TRAVIS_BUILD_NUMBER}}
-- if [ "$TRAVIS_PYTHON_VERSION" = "3.6" ] ; then
+- if [ "$TRAVIS_PYTHON_VERSION" = "3.6" -a "$TRAVIS_OS_NAME" = "linux" ] ; then
   python setup.py build_exe --build-exe dist/chord_exercise_partner-linux-x64-${BUILD_VER} ;
   cd dist ; tar czvf chord_exercise_partner-linux-x64-${BUILD_VER}.tar.gz chord_exercise_partner-linux-x64-${BUILD_VER}; cd .. ;
   rm -rf dist/chord_exercise_partner-linux-x64-${BUILD_VER} ;
   fi
 - if [ "$TRAVIS_OS_NAME" = "osx" ]; then
   python setup.py py2app ;
-  cd dist ; APPDIR="$(echo *.app)" ; zip -r "$APPDIR".zip "$APPDIR" ; rm -rf "$APPDIR" ; cd .. ;
+  cd dist ; APPDIR="$(echo *.app)" ; zip -r "chord_exercise_partner-osx-${BUILD_VER}".zip "$APPDIR" ; rm -rf "$APPDIR" ; cd .. ;
   fi
 - if [ "$TRAVIS_PULL_REQUEST" = "false" ] ; then
   tar cjvf "chord_exercise_partner-${TRAVIS_BRANCH}-${TRAVIS_OS_NAME}-py${TRAVIS_PYTHON_VERSION}.tar.bz2" dist/* ;
@@ -46,7 +46,7 @@ deploy:
   api_key:
     secure: hqEiLfvldYlPSneu+f5SkqF/XNxIvT/aRnN0+ujDLALKl2ko59yu7qjKuJdzQtTyfLI6jYULXBQx9LWkTSljC8gzuWmLrnt0PhGhegPzriCjwpYtm4sS5tobAldiC1MxH8oTH1rKqdL5PAbDhCVQSucyBbdjkIQ4v98cWiLoNdpRBLGMpazTqXxviCZI1qOtZM9BhcOpardAAVzud/hxErDvJID6omUGMxnaWJ8NeFBQ349ukUwvn6Scf6vEfHNV39TprTPhTnW62KM+cXU+dFyZGT52cdJZR0PeWXKmQxjhoO1IFnwlAuYnMKHXqlMRkTdZK2qgJq8e1/6EbyiQHQZkkrwY8Y6D+pkLHWO9GbglUzzgnQORTTCl5nK6xnzgFxnwhIc+mmDVCEWbUidC9ObN2seyXvIG9xpl2i8tdJJLeVOXTliTk7KxT8ZOdseKM2PJK6lo1KrIjo6TGiTbSyZGc7LDvZtVYCevXIXrszIuoLz20jAyw0zox/TRejjlUJtW5nm6Nm0WWCzML+bZ9P78W9TsQDmbik/q9RRVCfLVxR52xEbyltOgGLKvPXlRTvOQb3Atb70L8bGSfcLhWRVYsXzFsnda5AJoV/1oSOEZOreuoDUBaH2Sm/ul08Ec/+8UNjbz1hgs910tviRZYb/VJ1dcEl1XMKBJYqcxo88=
   file_glob: true
-  file: dist/chord_exercise_partner-linux-*.tar.gz
+  file: dist/*
   draft: true
   tag_name: ${TRAVIS_TAG}
   name: ${TRAVIS_TAG}
