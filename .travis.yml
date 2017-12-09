@@ -30,6 +30,15 @@ script:
 - if [ "$TRAVIS_OS_NAME" = "osx" ]; then
   python setup.py py2app ;
   fi
+- if [ "$TRAVIS_PULL_REQUEST" = "false" ] ; then
+  tar cjvf "chord_exercise_partner-${TRAVIS_BRANCH}-${TRAVIS_OS_NAME}-py${TRAVIS_PYTHON_VERSION}.tar.bz2" dist/* ;
+  else
+  tar cjvf "chord_exercise_partner-pr${TRAVIS_PULL_REQUEST}-${TRAVIS_OS_NAME}-py${TRAVIS_PYTHON_VERSION}.tar.bz2" dist/* ;
+  fi
+addons:
+  artifacts:
+    paths:
+      - chord_exercise_partner-*.tar.bz2
 deploy:
   provider: releases
   api_key:
@@ -45,3 +54,4 @@ deploy:
     tags: true
     branch: master
     condition: $TRAVIS_PYTHON_VERSION == 3.6
+# vi: sw=2 sts=2 et
