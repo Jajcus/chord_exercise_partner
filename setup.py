@@ -17,7 +17,7 @@ if "build_exe" in sys.argv:
         pass
 
 if sys.platform == 'darwin':
-    extra["setup_requires"] = ['py2app']
+    extra["setup_requires"] = ['py2app==0.13']
     extra["app"] = ["chord_exercise_partner.py"]
     plist = {
             "CFBundleIdentifier": "net.jajcus.chord_exercise_partner",

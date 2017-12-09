@@ -17,7 +17,7 @@ before_install:
 install:
 - pip install setuptools python-rtmidi --upgrade
 - if [ "$TRAVIS_PYTHON_VERSION" = "3.6" ] ; then pip install cx_Freeze==6.0b1 --upgrade ; fi
-- if [ "$TRAVIS_OS_NAME" = "osx" ] ; then pip install py2app ; fi
+- if [ "$TRAVIS_OS_NAME" = "osx" ] ; then pip install py2app==0.13 ; fi
 script:
 - utils/check_version.py
 - python setup.py build test
