@@ -38,7 +38,7 @@ script:
 addons:
   artifacts:
     paths:
-      - chord_exercise_partner-*.tar.bz2
+      - $(ls chord_exercise_partner-*.tar.bz2 | tr "\n" ":")
 deploy:
   provider: releases
   api_key:
