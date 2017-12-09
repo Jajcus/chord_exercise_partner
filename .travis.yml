@@ -26,9 +26,11 @@ script:
 - if [ "$TRAVIS_PYTHON_VERSION" = "3.6" ] ; then
   python setup.py build_exe --build-exe dist/chord_exercise_partner-linux-x64-${BUILD_VER} ;
   cd dist ; tar czvf chord_exercise_partner-linux-x64-${BUILD_VER}.tar.gz chord_exercise_partner-linux-x64-${BUILD_VER}; cd .. ;
+  rm -rf dist/chord_exercise_partner-linux-x64-${BUILD_VER} ;
   fi
 - if [ "$TRAVIS_OS_NAME" = "osx" ]; then
   python setup.py py2app ;
+  cd dist ; APPDIR="$(echo *.app)" ; zip -r "$APPDIR".zip "$APPDIR" ; rm -rf "$APPDIR" ; cd .. ;
   fi
 - if [ "$TRAVIS_PULL_REQUEST" = "false" ] ; then
   tar cjvf "chord_exercise_partner-${TRAVIS_BRANCH}-${TRAVIS_OS_NAME}-py${TRAVIS_PYTHON_VERSION}.tar.bz2" dist/* ;
